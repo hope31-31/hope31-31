@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Offline Class Chat</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+  html, body {
+    margin:0; padding:0; height:100%;
+    font-family: "Georgia", sans-serif;
+    background: #1e1b2d; /* dark purple */
+    color: #dcd6f7; /* light lavender */
+    display:flex; flex-direction:column;
+  }
+  header {
+    padding:12px 20px;
+    background:#4b3b77; /* medium purple */
+    display:flex; justify-content:space-between; align-items:center;
+    font-size:1.1rem;
+  }
+  header span { opacity:0.85; }
+  #username {
+    background:#2b2244;
+    border:1px solid #6658a8;
+    color:#e0d9ff;
+    padding:6px 10px;
+    border-radius:4px;
+    width:130px;
+    font-size:1rem;
+  }
+  #chat {
+    flex:1;
+    overflow-y:auto;
+    padding:12px 16px;
+    scrollbar-width: thin;
+    scrollbar-color: #7fa1ff #2b2244;
+  }
+  #chat::-webkit-scrollbar {
+    width:8px;
+  }
+  #chat::-webkit-scrollbar-thumb {
+    background-color: #7fa1ff;
+    border-radius:4px;
+  }
+  .msg {
+    margin-bottom:10px;
+    padding:8px 12px;
+    border-radius:6px;
+    background:#3a2e66; /* other messages */
+    max-width:85%;
+    word-wrap:break-word;
+    color:#e0d9ff;
+  }
+  .me {
+    background:#5a7fff; /* own messages */
+    margin-left:auto;
+    text-align:right;
+    color:#fff;
+  }
+  .meta { font-size:0.75rem; opacity:0.7; margin-bottom:2px; }
+  .text { font-size:1rem; }
+  #form {
+    display:flex;
+    padding:10px 16px;
+    background:#4b3b77;
+    gap:8px;
+  }
+  #message {
+    flex:1;
+    padding:10px;
+    border-radius:4px;
+    border:1px solid #6658a8;
+    background:#2b2244;
+    color:#e0d9ff;
+    font-size:1rem;
+  }
+  #send {
+    padding:10px 16px;
+    border:none;
+    border-radius:4px;
+    background:#7fa1ff;
+    color:#111b33;
+    font-weight:bold;
+    font-size:1rem;
+    cursor:pointer;
+  }
+  #send:disabled { opacity:0.5; cursor:default; }
+  #download {
+    margin-left:8px;
+    padding:10px 16px;
+    border:none;
+    border-radius:4px;
+    background:#b49fff;
+    color:#111b33;
+    font-weight:bold;
+    font-size:1rem;
+    cursor:pointer;
+  }
+</style>
+</head>
+<body>
+<header>
+  <div><strong>Class Chat</strong></div>
+  <div>
+    <span>Name:</span>
+    <input id="username" placeholder="you">
+  </div>
+</header>
+<div id="chat"></div>
+<form id="form">
+  <input id="message" autocomplete="off" placeholder="Type a message...">
+  <button id="send" type="submit">Send</button>
+  <button type="button" id="download">Download Chat</button>
+</form>
+<script>
+  const chatEl = document.getElementById("chat");
+  const formEl = document.getElementById("form");
+  const msgInput = document.getElementById("message");
+  const userInput = document.getElementById("username");
+  const downloadBtn = document.getElementById("download");
+  let messages = [];
+  let state = {locked:false, muted:false};
+  const TEACHER_PASSWORD = "teacher123";
+  // Add message to UI
+  function addMessage(msg, isMe){
+    const wrap = document.createElement("div");
+    wrap.className = "msg" + (isMe ? " me" : "");
+    const meta = document.createElement("div");
+    meta.className = "meta";
+    meta.textContent = msg.name + " • " + new Date(msg.time).toLocaleTimeString();
+    const text = document.createElement("div");
+    text.className = "text";
+    text.textContent = msg.text;
+    wrap.appendChild(meta);
+    wrap.appendChild(text);
+    chatEl.appendChild(wrap);
+    chatEl.scrollTop = chatEl.scrollHeight;
+  }
+  function systemMessage(text){
+    addMessage({name:"SYSTEM", text, time:Date.now()}, false);
+  }
+  function updateChatState(){
+    msgInput.disabled = state.locked || state.muted;
+  }
+  // Send message
+  formEl.addEventListener("submit", e=>{
+    e.preventDefault();
+    if(state.locked || state.muted) return;
+    const text = msgInput.value.trim();
+    if(!text) return;
+    const msg = {name: userInput.value.trim()||"anon", text, time:Date.now()};
+    messages.push(msg);
+    addMessage(msg, true);
+    msgInput.value="";
+  });
+  // Teacher mode: Ctrl+Shift+Y
+  document.addEventListener("keydown", e=>{
+    if(e.ctrlKey && e.shiftKey && e.key.toLowerCase()==="y"){
+      const pass = prompt("Teacher password:");
+      if(pass !== TEACHER_PASSWORD) return alert("Wrong password");
+      const action = prompt("Teacher Mode:\n1=Lock\n2=Unlock\n3=Mute\n4=Unmute\n5=Clear chat");
+      switch(action){
+        case "1": state.locked=true; systemMessage("Chat locked"); break;
+        case "2": state.locked=false; systemMessage("Chat unlocked"); break;
+        case "3": state.muted=true; systemMessage("Chat muted"); break;
+        case "4": state.muted=false; systemMessage("Chat unmuted"); break;
+        case "5": messages=[]; chatEl.innerHTML=""; systemMessage("Chat cleared"); break;
+      }
+      updateChatState();
+    }
+  });
+  // Download chat
+  downloadBtn.addEventListener("click", ()=>{
+    if(messages.length===0) return alert("No messages to download.");
+    let text = messages.map(m=>`${m.name} (${new Date(m.time).toLocaleTimeString()}): ${m.text}`).join("\n");
+    const blob = new Blob([text], {type:"text/plain"});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href=url; a.download="chat.txt"; a.click();
+    URL.revokeObjectURL(url);
+  });
+</script>
+</body>
+</html>
