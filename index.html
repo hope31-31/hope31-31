@@ -5,21 +5,21 @@
 <title>Class Chat Live</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <style>
-  html, body { margin:0; padding:0; height:100%; font-family: "Georgia", sans-serif; background:#1e1b2d; color:#dcd6f7; display:flex; flex-direction:column; }
-  header { padding:12px 20px; background:#4b3b77; display:flex; justify-content:space-between; align-items:center; font-size:1.1rem; }
-  header span { opacity:0.85; }
-  #username { background:#2b2244; border:1px solid #6658a8; color:#e0d9ff; padding:6px 10px; border-radius:4px; width:130px; font-size:1rem; }
-  #chat { flex:1; overflow-y:auto; padding:12px 16px; scrollbar-width: thin; scrollbar-color: #7fa1ff #2b2244; }
-  #chat::-webkit-scrollbar { width:8px; }
-  #chat::-webkit-scrollbar-thumb { background-color: #7fa1ff; border-radius:4px; }
-  .msg { margin-bottom:10px; padding:8px 12px; border-radius:6px; background:#3a2e66; max-width:85%; word-wrap:break-word; color:#e0d9ff; }
-  .me { background:#5a7fff; margin-left:auto; text-align:right; color:#fff; }
-  .meta { font-size:0.75rem; opacity:0.7; margin-bottom:2px; }
-  .text { font-size:1rem; }
-  #form { display:flex; padding:10px 16px; background:#4b3b77; gap:8px; }
-  #message { flex:1; padding:10px; border-radius:4px; border:1px solid #6658a8; background:#2b2244; color:#e0d9ff; font-size:1rem; }
-  #send { padding:10px 16px; border:none; border-radius:4px; background:#7fa1ff; color:#111b33; font-weight:bold; font-size:1rem; cursor:pointer; }
-  #send:disabled { opacity:0.5; cursor:default; }
+html, body { margin:0; padding:0; height:100%; font-family:"Georgia", sans-serif; background:#1e1b2d; color:#dcd6f7; display:flex; flex-direction:column; }
+header { padding:12px 20px; background:#4b3b77; display:flex; justify-content:space-between; align-items:center; font-size:1.1rem; }
+header span { opacity:0.85; }
+#username { background:#2b2244; border:1px solid #6658a8; color:#e0d9ff; padding:6px 10px; border-radius:4px; width:130px; font-size:1rem; }
+#chat { flex:1; overflow-y:auto; padding:12px 16px; scrollbar-width: thin; scrollbar-color: #7fa1ff #2b2244; }
+#chat::-webkit-scrollbar { width:8px; }
+#chat::-webkit-scrollbar-thumb { background-color:#7fa1ff; border-radius:4px; }
+.msg { margin-bottom:10px; padding:8px 12px; border-radius:6px; background:#3a2e66; max-width:85%; word-wrap:break-word; color:#e0d9ff; }
+.me { background:#5a7fff; margin-left:auto; text-align:right; color:#fff; }
+.meta { font-size:0.75rem; opacity:0.7; margin-bottom:2px; }
+.text { font-size:1rem; }
+#form { display:flex; padding:10px 16px; background:#4b3b77; gap:8px; }
+#message { flex:1; padding:10px; border-radius:4px; border:1px solid #6658a8; background:#2b2244; color:#e0d9ff; font-size:1rem; }
+#send { padding:10px 16px; border:none; border-radius:4px; background:#7fa1ff; color:#111b33; font-weight:bold; font-size:1rem; cursor:pointer; }
+#send:disabled { opacity:0.5; cursor:default; }
 </style>
 </head>
 <body>
@@ -40,14 +40,15 @@
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
 <script>
-  // 🔥 Paste your Firebase config below 🔥
+  // 🔥 Your Firebase config 🔥
   const firebaseConfig = {
-    apiKey: "YOUR_FIREBASE_API_KEY",
-    authDomain: "YOUR_FIREBASE_AUTH_DOMAIN",
-    projectId: "YOUR_FIREBASE_PROJECT_ID",
-    storageBucket: "YOUR_FIREBASE_STORAGE_BUCKET",
-    messagingSenderId: "YOUR_FIREBASE_MESSAGING_ID",
-    appId: "YOUR_FIREBASE_APP_ID"
+    apiKey: "AIzaSyD9GQMi0v4ItnkJ2uqKtUUQU59DorLrCAg",
+    authDomain: "live-chat-3d2c3.firebaseapp.com",
+    projectId: "live-chat-3d2c3",
+    storageBucket: "live-chat-3d2c3.firebasestorage.app",
+    messagingSenderId: "550798266942",
+    appId: "1:550798266942:web:2ce678f70e4f64d6f7376f",
+    measurementId: "G-L0K72L8894"
   };
 
   firebase.initializeApp(firebaseConfig);
@@ -75,11 +76,9 @@
     chatEl.scrollTop = chatEl.scrollHeight;
   }
 
-  function updateChatState(){
-    msgInput.disabled = state.locked || state.muted;
-  }
+  function updateChatState(){ msgInput.disabled = state.locked || state.muted; }
 
-  // Listen to Firebase messages in real-time
+  // Listen to Firebase messages live
   db.collection("messages").orderBy("time")
     .onSnapshot(snapshot=>{
       chatEl.innerHTML = "";
@@ -89,7 +88,7 @@
       });
     });
 
-  // Send message to Firebase
+  // Send messages
   formEl.addEventListener("submit", e=>{
     e.preventDefault();
     if(state.locked || state.muted) return;
@@ -100,7 +99,7 @@
     msgInput.value = "";
   });
 
-  // Teacher mode: Ctrl+Shift+Y
+  // Teacher mode
   document.addEventListener("keydown", e=>{
     if(e.ctrlKey && e.shiftKey && e.key.toLowerCase()==="y"){
       const pass = prompt("Teacher password:");
