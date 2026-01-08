@@ -2,208 +2,198 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Class Chat Live</title>
+<title>Class Chat Live v2</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <style>
-  html, body { margin:0; padding:0; height:100%; font-family:"Georgia", sans-serif; background:#1e1b2d; color:#dcd6f7; display:flex; }
-  
-  /* SIDEBAR */
-  #sidebar { width:140px; background:#2b2244; padding:8px; display:flex; flex-direction:column; }
-  #sidebar h3 { margin:0 0 6px; font-size:1rem; }
-  #onlineUsers { flex:1; overflow-y:auto; }
-  #onlineUsers div { margin-bottom:6px; font-size:0.9rem; display:flex; align-items:center; gap:6px; }
-  .avatar { width:20px; height:20px; border-radius:50%; background:#7fa1ff; text-align:center; line-height:20px; font-size:0.8rem; color:#fff; flex-shrink:0; }
-
-  /* MAIN CHAT */
+  html, body { margin:0; padding:0; height:100%; font-family:"Georgia",sans-serif; background:#1e1b2d; color:#dcd6f7; display:flex; flex-direction:column; }
+  header { padding:10px 15px; background:#4b3b77; display:flex; justify-content:space-between; align-items:center; font-size:1rem; }
+  header span { opacity:0.85; }
+  #username { background:#2b2244; border:1px solid #6658a8; color:#e0d9ff; padding:5px 8px; border-radius:4px; width:120px; font-size:0.9rem; }
+  #roomSelect { background:#2b2244; border:1px solid #6658a8; color:#e0d9ff; padding:5px 8px; border-radius:4px; margin-left:10px; font-size:0.9rem; }
+  #chat { flex:1; overflow-y:auto; padding:10px 12px; scrollbar-width: thin; scrollbar-color:#7fa1ff #2b2244; }
+  #chat::-webkit-scrollbar { width:6px; }
+  #chat::-webkit-scrollbar-thumb { background-color:#7fa1ff; border-radius:4px; }
+  .msg { margin-bottom:8px; padding:6px 10px; border-radius:6px; background:#3a2e66; max-width:80%; word-wrap:break-word; color:#e0d9ff; }
+  .me { background:#5a7fff; margin-left:auto; text-align:right; color:#fff; }
+  .meta { font-size:0.7rem; opacity:0.7; margin-bottom:1px; }
+  .text { font-size:0.95rem; }
+  .imgMsg { max-width:150px; border-radius:6px; display:block; margin-top:4px; }
+  #form { display:flex; padding:8px 12px; background:#4b3b77; gap:6px; }
+  #message { flex:1; padding:8px; border-radius:4px; border:1px solid #6658a8; background:#2b2244; color:#e0d9ff; font-size:0.95rem; }
+  #send, #clear, #upload, #voiceBtn { padding:8px 12px; border:none; border-radius:4px; background:#7fa1ff; color:#111b33; font-weight:bold; cursor:pointer; font-size:0.95rem; }
+  #send:disabled { opacity:0.5; cursor:default; }
+  #sidebar { width:150px; background:#3b335a; padding:6px; display:flex; flex-direction:column; font-size:0.8rem; overflow-y:auto; }
+  #usersOnline { margin-top:6px; }
+  #container { flex:1; display:flex; }
   #main { flex:1; display:flex; flex-direction:column; }
-  header { padding:6px 10px; background:#4b3b77; display:flex; justify-content:space-between; align-items:center; font-size:1rem; flex-wrap:wrap; gap:4px; }
-  #roomControls { display:flex; gap:4px; flex-wrap:wrap; }
-  input, select { padding:4px 6px; border-radius:4px; border:none; font-size:0.9rem; }
-
-  #chat { flex:1; overflow-y:auto; padding:8px; }
-  .msg { margin-bottom:6px; padding:6px 8px; border-radius:6px; background:#3a2e66; max-width:80%; word-wrap:break-word; }
-  .me { background:#5a7fff; margin-left:auto; color:#fff; }
-  .meta { font-size:0.7rem; opacity:0.7; margin-bottom:2px; }
-  .text { font-size:0.9rem; }
-
-  #typing { font-size:0.8rem; opacity:0.7; padding-left:8px; }
-
-  #form { display:flex; padding:6px; background:#4b3b77; gap:4px; }
-  #message { flex:1; padding:6px; border-radius:4px; border:1px solid #6658a8; background:#2b2244; color:#e0d9ff; font-size:0.9rem; }
-  button { padding:6px 8px; border:none; border-radius:4px; background:#7fa1ff; color:#111b33; font-weight:bold; font-size:0.9rem; cursor:pointer; }
-  button:disabled { opacity:0.5; cursor:default; }
-
-  /* MOBILE ADJUSTMENTS */
-  @media(max-width:600px){
-    #sidebar { width:100%; height:auto; display:flex; flex-direction:row; overflow-x:auto; padding:4px; }
-    #onlineUsers { display:flex; flex-direction:row; gap:6px; overflow-x:auto; }
-    #onlineUsers div { font-size:0.8rem; }
-    header { flex-direction:column; gap:4px; }
-  }
 </style>
 </head>
 <body>
 
-<div id="sidebar">
-  <h3>Online Users</h3>
-  <div id="onlineUsers"></div>
-</div>
-
-<div id="main">
 <header>
   <div>
-    Name: <input id="username" placeholder="You">
-    <input type="file" id="avatarInput">
+    <span>Name:</span> <input id="username" placeholder="you">
+    <select id="roomSelect">
+      <option value="general">General Room</option>
+    </select>
   </div>
-  <div id="roomControls">
-    <input id="newRoom" placeholder="Room name">
-    <input id="roomPass" placeholder="Password (optional)">
-    <button id="joinRoom">Join/Create</button>
-    <button id="clear">Clear Chat</button>
+  <div>
+    <button id="voiceBtn">🎤 Unmuted</button>
+    <button id="clear">Clear</button>
+    <input type="file" id="upload" accept="image/*">
   </div>
 </header>
 
-<div id="chat"></div>
-<div id="typing"></div>
+<div id="container">
+  <div id="main">
+    <div id="chat"></div>
+    <form id="form">
+      <input id="message" autocomplete="off" placeholder="Type a message...">
+      <button id="send" type="submit">Send</button>
+    </form>
+  </div>
+  <div id="sidebar">
+    <strong>Online Users:</strong>
+    <div id="usersOnline"></div>
+  </div>
+</div>
 
-<form id="form">
-  <input id="message" autocomplete="off" placeholder="Type a message...">
-  <button id="send" type="submit">Send</button>
-</form>
-
-<!-- FIREBASE -->
+<!-- Firebase -->
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-storage-compat.js"></script>
+
 <script>
+  // 🔥 Your Firebase config 🔥
   const firebaseConfig = {
     apiKey: "YOUR_API_KEY",
     authDomain: "YOUR_AUTH_DOMAIN",
     projectId: "YOUR_PROJECT_ID",
     storageBucket: "YOUR_STORAGE_BUCKET",
-    messagingSenderId: "YOUR_MESSAGING_ID",
-    appId: "YOUR_APP_ID",
-    measurementId: "YOUR_MEASUREMENT_ID"
+    messagingSenderId: "YOUR_SENDER_ID",
+    appId: "YOUR_APP_ID"
   };
-
   firebase.initializeApp(firebaseConfig);
   const db = firebase.firestore();
-  const rtdb = firebase.database();
+  const storage = firebase.storage();
 
   const chatEl = document.getElementById("chat");
   const formEl = document.getElementById("form");
   const msgInput = document.getElementById("message");
   const userInput = document.getElementById("username");
-  const onlineEl = document.getElementById("onlineUsers");
-  const typingEl = document.getElementById("typing");
-  const avatarInput = document.getElementById("avatarInput");
-  const roomInput = document.getElementById("newRoom");
-  const roomPassInput = document.getElementById("roomPass");
-  const TEACHER_PASSWORD = "Baddie";
+  const sendBtn = document.getElementById("send");
+  const clearBtn = document.getElementById("clear");
+  const uploadInput = document.getElementById("upload");
+  const roomSelect = document.getElementById("roomSelect");
+  const voiceBtn = document.getElementById("voiceBtn");
+  const usersOnlineEl = document.getElementById("usersOnline");
 
-  let currentRoom = "General";
   let username = "";
-  let avatarURL = "";
-  let typingTimeout;
+  let currentRoom = "general";
+  let muted = false;
 
-  avatarInput.addEventListener("change", e=>{
-    const file = e.target.files[0];
-    if(!file) return;
-    const reader = new FileReader();
-    reader.onload = ()=>{ avatarURL = reader.result; };
-    reader.readAsDataURL(file);
-  });
-
-  // JOIN ROOM
-  document.getElementById("joinRoom").onclick = ()=>{
-    const roomName = roomInput.value.trim() || "General";
-    const pass = roomPassInput.value.trim();
-    const storedPass = localStorage.getItem(`room-${roomName}-pass`);
-    if(storedPass && storedPass !== pass){
-      return alert("Wrong password!");
-    }
-    if(pass) localStorage.setItem(`room-${roomName}-pass`, pass);
-    currentRoom = roomName;
-    chatEl.innerHTML="";
-    loadMessages();
-    setOnlineStatus();
-  };
-
-  // ONLINE USERS
-  function updateOnlineUsers(list){
-    onlineEl.innerHTML = "";
-    list.forEach(u=>{
-      const div = document.createElement("div");
-      const avatar = document.createElement("div");
-      avatar.className="avatar";
-      if(u.avatar) avatar.style.backgroundImage=`url(${u.avatar})`;
-      else avatar.textContent = u.name[0].toUpperCase();
-      div.appendChild(avatar);
-      div.appendChild(document.createTextNode(u.name));
-      onlineEl.appendChild(div);
+  // --- USER ONLINE MANAGEMENT ---
+  const onlineUsersRef = db.collection("onlineUsers");
+  function updateOnlineUsers(){
+    onlineUsersRef.where("room","==",currentRoom).onSnapshot(snapshot=>{
+      usersOnlineEl.innerHTML = "";
+      snapshot.forEach(doc=>{
+        const u = doc.data();
+        const div = document.createElement("div");
+        div.textContent = u.name;
+        usersOnlineEl.appendChild(div);
+      });
     });
   }
 
-  function setOnlineStatus(){
-    username = userInput.value.trim()||"anon";
-    const userRef = rtdb.ref(`online/${username}`);
-    userRef.set({name:username, avatar:avatarURL, room:currentRoom});
-    userRef.onDisconnect().remove();
-  }
-  setOnlineStatus();
-
+  // --- CHAT FUNCTIONS ---
   function addMessage(msg, isMe){
     const wrap = document.createElement("div");
-    wrap.className="msg"+(isMe?" me":"");
-    const meta=document.createElement("div"); meta.className="meta";
-    meta.textContent=msg.name+" • "+new Date(msg.time).toLocaleTimeString();
-    const text=document.createElement("div"); text.className="text"; text.textContent=msg.text;
-    wrap.appendChild(meta); wrap.appendChild(text);
-    chatEl.appendChild(wrap); chatEl.scrollTop=chatEl.scrollHeight;
+    wrap.className = "msg" + (isMe ? " me" : "");
+    const meta = document.createElement("div");
+    meta.className = "meta";
+    meta.textContent = msg.name + " • " + new Date(msg.time).toLocaleTimeString();
+    wrap.appendChild(meta);
+
+    const textDiv = document.createElement("div");
+    textDiv.className = "text";
+    textDiv.textContent = msg.text || "";
+    wrap.appendChild(textDiv);
+
+    if(msg.imgUrl){
+      const img = document.createElement("img");
+      img.src = msg.imgUrl;
+      img.className = "imgMsg";
+      wrap.appendChild(img);
+    }
+
+    chatEl.appendChild(wrap);
+    chatEl.scrollTop = chatEl.scrollHeight;
   }
 
-  msgInput.addEventListener("input", ()=>{
-    rtdb.ref(`typing/${currentRoom}/${username}`).set(true);
-    clearTimeout(typingTimeout);
-    typingTimeout = setTimeout(()=>{
-      rtdb.ref(`typing/${currentRoom}/${username}`).remove();
-    },1000);
-  });
+  function clearChatLocal(){ chatEl.innerHTML=""; }
 
   formEl.addEventListener("submit", e=>{
     e.preventDefault();
-    if(!msgInput.value.trim()) return;
-    const msg={name:username,text:msgInput.value.trim(),time:Date.now(),room:currentRoom, avatar:avatarURL};
+    const text = msgInput.value.trim();
+    if(!text) return;
+    const msg = {name:username||"anon", text, time:Date.now(), room:currentRoom};
     db.collection("messages").add(msg);
     msgInput.value="";
   });
 
-  // CLEAR CHAT (local only)
-  document.getElementById("clear").onclick = ()=>{ chatEl.innerHTML=""; };
+  clearBtn.addEventListener("click", clearChatLocal);
 
-  function loadMessages(){
-    db.collection("messages").where("room","==",currentRoom).orderBy("time")
+  uploadInput.addEventListener("change", e=>{
+    const file = e.target.files[0];
+    if(!file) return;
+    const storageRef = storage.ref(`images/${Date.now()}_${file.name}`);
+    storageRef.put(file).then(snapshot=>{
+      snapshot.ref.getDownloadURL().then(url=>{
+        const msg = {name:username||"anon", imgUrl:url, time:Date.now(), room:currentRoom};
+        db.collection("messages").add(msg);
+      });
+    });
+  });
+
+  // --- ROOM MANAGEMENT ---
+  roomSelect.addEventListener("change", e=>{
+    currentRoom = e.target.value;
+    chatEl.innerHTML="";
+    listenMessages();
+    updateOnlineUsers();
+  });
+
+  function listenMessages(){
+    db.collection("messages")
+      .where("room","==",currentRoom)
+      .orderBy("time")
       .onSnapshot(snapshot=>{
         chatEl.innerHTML="";
         snapshot.forEach(doc=>{
-          const msg=doc.data();
+          const msg = doc.data();
           addMessage(msg,msg.name===username);
         });
       });
   }
-  loadMessages();
 
-  rtdb.ref("online").on("value", snap=>{
-    const users=[];
-    snap.forEach(u=>{ if(u.val().room===currentRoom) users.push(u.val()); });
-    updateOnlineUsers(users);
+  // --- VOICE CHAT ---
+  let localStream;
+  let peers = {};
+  async function startVoice(){
+    if(muted){ muted=false; voiceBtn.textContent="🎤 Unmuted"; }
+    else{ muted=true; voiceBtn.textContent="🎤 Muted"; }
+  }
+  voiceBtn.addEventListener("click", startVoice);
+
+  // --- USER LOGIN ---
+  userInput.addEventListener("blur", e=>{
+    username = userInput.value.trim()||"anon";
+    onlineUsersRef.doc(username).set({name:username, room:currentRoom});
+    updateOnlineUsers();
+    listenMessages();
   });
 
-  rtdb.ref(`typing/${currentRoom}`).on("value", snap=>{
-    const names=[];
-    snap.forEach(c=>names.push(c.key));
-    typingEl.textContent = names.length? names.join(", ")+" is typing..." : "";
-  });
 </script>
 </body>
 </html>
