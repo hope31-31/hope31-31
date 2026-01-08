@@ -2,231 +2,217 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Class Chat</title>
+<title>Class Chat Live</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
-
 <style>
-:root{
-  --bg:#14122a;
-  --panel:#221f3d;
-  --accent:#8b9dff;
-  --bubble:#2f2c55;
-  --me:#6f86ff;
-}
+  /* GENERAL LAYOUT */
+  html, body { margin:0; padding:0; height:100%; font-family:"Georgia", sans-serif; background:#1e1b2d; color:#dcd6f7; display:flex; }
+  #sidebar { width:150px; background:#2b2244; padding:10px; display:flex; flex-direction:column; }
+  #sidebar h3 { margin:0 0 10px; font-size:1rem; }
+  #onlineUsers { flex:1; overflow-y:auto; }
+  #onlineUsers div { margin-bottom:6px; font-size:0.9rem; display:flex; align-items:center; gap:6px; }
+  .avatar { width:20px; height:20px; border-radius:50%; background:#7fa1ff; text-align:center; line-height:20px; font-size:0.8rem; color:#fff; }
 
-*{box-sizing:border-box}
-html,body{
-  margin:0;height:100%;
-  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
-  background:linear-gradient(160deg,#14122a,#1e1b3a);
-  color:#eee;
-}
-body{display:flex;flex-direction:column}
+  #main { flex:1; display:flex; flex-direction:column; }
+  header { padding:8px 12px; background:#4b3b77; display:flex; justify-content:space-between; align-items:center; font-size:1rem; }
+  #roomControls { display:flex; gap:6px; }
+  input, select { padding:4px 6px; border-radius:4px; border:none; font-size:0.9rem; }
 
-header{
-  padding:10px;
-  background:rgba(34,31,61,.95);
-  display:flex;
-  gap:6px;
-  flex-wrap:wrap;
-  align-items:center;
-}
+  #chat { flex:1; overflow-y:auto; padding:12px 8px; }
+  .msg { margin-bottom:8px; padding:6px 8px; border-radius:6px; background:#3a2e66; max-width:80%; word-wrap:break-word; }
+  .me { background:#5a7fff; margin-left:auto; color:#fff; }
+  .meta { font-size:0.7rem; opacity:0.7; margin-bottom:2px; }
+  .text { font-size:0.9rem; }
 
-header input,header select{
-  background:#2b2752;
-  border:none;
-  padding:8px 10px;
-  border-radius:10px;
-  color:white;
-}
+  #typing { font-size:0.8rem; opacity:0.7; padding-left:8px; }
 
-header button{
-  background:var(--accent);
-  border:none;
-  border-radius:10px;
-  padding:8px 12px;
-  font-weight:600;
-}
+  #form { display:flex; padding:8px; background:#4b3b77; gap:6px; }
+  #message { flex:1; padding:6px; border-radius:4px; border:1px solid #6658a8; background:#2b2244; color:#e0d9ff; font-size:0.9rem; }
+  button { padding:6px 10px; border:none; border-radius:4px; background:#7fa1ff; color:#111b33; font-weight:bold; font-size:0.9rem; cursor:pointer; }
+  button:disabled { opacity:0.5; cursor:default; }
 
-#chat{
-  flex:1;
-  padding:14px;
-  overflow-y:auto;
-}
-
-.msg{
-  max-width:80%;
-  background:var(--bubble);
-  padding:10px 12px;
-  border-radius:16px;
-  margin-bottom:10px;
-  box-shadow:0 4px 10px rgba(0,0,0,.3);
-}
-.me{margin-left:auto;background:linear-gradient(135deg,var(--me),#9aa8ff)}
-
-.meta{font-size:.75rem;opacity:.7;margin-bottom:4px}
-
-#typing{
-  padding:6px 14px;
-  font-size:.85rem;
-  opacity:.7;
-}
-
-#online{
-  padding:8px 12px;
-  background:#1e1b35;
-  display:flex;
-  gap:6px;
-  flex-wrap:wrap;
-}
-
-.user{
-  padding:5px 10px;
-  border-radius:999px;
-  background:#2d2a52;
-  font-size:.85rem;
-}
-
-#form{
-  display:flex;
-  gap:6px;
-  padding:10px;
-  background:rgba(34,31,61,.95);
-}
-
-#message{
-  flex:1;
-  padding:10px;
-  border-radius:14px;
-  border:none;
-  background:#2b2752;
-  color:white;
-}
-
-#send{
-  padding:10px 14px;
-  border:none;
-  border-radius:14px;
-  background:var(--accent);
-  font-weight:600;
-}
-
-@media(max-width:480px){
-  header input,header select,header button{font-size:.85rem}
-  #message,#send{font-size:.9rem}
-}
+  /* MOBILE ADJUSTMENTS */
+  @media(max-width:600px){
+    #sidebar { display:none; }
+    header { flex-direction:column; gap:6px; }
+  }
 </style>
 </head>
-
 <body>
 
+<div id="sidebar">
+  <h3>Online Users</h3>
+  <div id="onlineUsers"></div>
+</div>
+
+<div id="main">
 <header>
-  <input id="username" placeholder="name">
-  <input id="avatar" placeholder="emoji 😈✨💀">
-  <select id="room"></select>
+  <div>
+    Name: <input id="username" placeholder="You">
+    <input type="file" id="avatarInput">
+  </div>
+  <div id="roomControls">
+    <input id="newRoom" placeholder="Room name">
+    <input id="roomPass" placeholder="Password (optional)">
+    <button id="joinRoom">Join/Create</button>
+    <button id="clear">Clear Chat</button>
+  </div>
 </header>
 
 <div id="chat"></div>
 <div id="typing"></div>
-<div id="online"></div>
 
 <form id="form">
-  <input id="message" placeholder="Message…" autocomplete="off">
-  <button id="send">Send</button>
+  <input id="message" autocomplete="off" placeholder="Type a message...">
+  <button id="send" type="submit">Send</button>
 </form>
-
+  
+<!-- FIREBASE -->
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
-
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
 <script>
-firebase.initializeApp({
-  apiKey: "AIzaSyD9GQMi0v4ItnkJ2uqKtUUQU59DorLrCAg",
-  authDomain: "live-chat-3d2c3.firebaseapp.com",
-  projectId: "live-chat-3d2c3"
-});
-const db=firebase.firestore();
+  // 🔥 Your Firebase config 🔥
+  const firebaseConfig = {
+    apiKey: "YOUR_API_KEY",
+    authDomain: "YOUR_AUTH_DOMAIN",
+    projectId: "YOUR_PROJECT_ID",
+    storageBucket: "YOUR_STORAGE_BUCKET",
+    messagingSenderId: "YOUR_MESSAGING_ID",
+    appId: "YOUR_APP_ID",
+    measurementId: "YOUR_MEASUREMENT_ID"
+  };
 
-const user=document.getElementById("username");
-const avatar=document.getElementById("avatar");
-const room=document.getElementById("room");
-const chat=document.getElementById("chat");
-const typingEl=document.getElementById("typing");
-const online=document.getElementById("online");
-const msg=document.getElementById("message");
+  firebase.initializeApp(firebaseConfig);
+  const db = firebase.firestore();
+  const rtdb = firebase.database();
 
-user.value=localStorage.getItem("name")||"";
-avatar.value=localStorage.getItem("avatar")||"🙂";
-user.oninput=()=>localStorage.setItem("name",user.value);
-avatar.oninput=()=>localStorage.setItem("avatar",avatar.value);
+  // ELEMENTS
+  const chatEl = document.getElementById("chat");
+  const formEl = document.getElementById("form");
+  const msgInput = document.getElementById("message");
+  const userInput = document.getElementById("username");
+  const onlineEl = document.getElementById("onlineUsers");
+  const typingEl = document.getElementById("typing");
+  const avatarInput = document.getElementById("avatarInput");
+  const roomInput = document.getElementById("newRoom");
+  const roomPassInput = document.getElementById("roomPass");
 
-const pid=Math.random().toString(36).slice(2);
-room.innerHTML='<option value="general">General</option>';
+  let currentRoom = "General";
+  let username = "";
+  let avatarURL = "";
+  let typingTimeout;
 
-function loadRoom(){
-  chat.innerHTML="";
-  typingEl.textContent="";
+  const TEACHER_PASSWORD = "Baddie";
 
-  const pres=db.collection("presence").doc(pid);
-  pres.set({name:user.value,avatar:avatar.value,room:room.value,typing:false});
-  window.onbeforeunload=()=>pres.delete();
-
-  db.collection("messages")
-   .where("room","==",room.value)
-   .orderBy("time")
-   .onSnapshot(s=>{
-    chat.innerHTML="";
-    s.forEach(d=>{
-      const m=d.data();
-      const div=document.createElement("div");
-      div.className="msg"+(m.name===user.value?" me":"");
-      div.innerHTML=`<div class="meta">${m.avatar} ${m.name}</div>${m.text}`;
-      chat.appendChild(div);
-    });
-    chat.scrollTop=chat.scrollHeight;
-   });
-
-  db.collection("presence")
-   .where("room","==",room.value)
-   .onSnapshot(s=>{
-    online.innerHTML="";
-    typingEl.textContent="";
-    s.forEach(d=>{
-      const p=d.data();
-      const u=document.createElement("span");
-      u.className="user";
-      u.textContent=p.avatar+" "+p.name;
-      online.appendChild(u);
-
-      if(p.typing && p.name!==user.value){
-        typingEl.textContent=`${p.name} is typing…`;
-      }
-    });
-   });
-}
-loadRoom();
-
-let typingTimeout;
-msg.oninput=()=>{
-  const ref=db.collection("presence").doc(pid);
-  ref.update({typing:true});
-  clearTimeout(typingTimeout);
-  typingTimeout=setTimeout(()=>ref.update({typing:false}),1200);
-};
-
-document.getElementById("form").onsubmit=e=>{
-  e.preventDefault();
-  if(!msg.value.trim())return;
-  db.collection("messages").add({
-    name:user.value||"anon",
-    avatar:avatar.value,
-    text:msg.value,
-    room:room.value,
-    time:Date.now()
+  // SAVE AVATAR LOCALLY
+  avatarInput.addEventListener("change", e=>{
+    const file = e.target.files[0];
+    if(!file) return;
+    const reader = new FileReader();
+    reader.onload = ()=>{ avatarURL = reader.result; };
+    reader.readAsDataURL(file);
   });
-  msg.value="";
-  db.collection("presence").doc(pid).update({typing:false});
-};
-</script>
 
+  // ROOM JOIN
+  document.getElementById("joinRoom").onclick = ()=>{
+    const roomName = roomInput.value.trim();
+    const pass = roomPassInput.value.trim();
+    if(!roomName) return alert("Enter room name");
+    const storedPass = localStorage.getItem(`room-${roomName}-pass`);
+    if(storedPass && storedPass !== pass){
+      return alert("Wrong password!");
+    }
+    if(pass) localStorage.setItem(`room-${roomName}-pass`, pass);
+    currentRoom = roomName;
+    chatEl.innerHTML="";
+    loadMessages();
+  };
+
+  // ONLINE USERS TRACKING
+  function updateOnlineUsers(list){
+    onlineEl.innerHTML = "";
+    list.forEach(u=>{
+      const div = document.createElement("div");
+      const avatar = document.createElement("div");
+      avatar.className="avatar";
+      if(u.avatar) avatar.style.backgroundImage=`url(${u.avatar})`;
+      else avatar.textContent = u.name[0].toUpperCase();
+      div.appendChild(avatar);
+      div.appendChild(document.createTextNode(u.name));
+      onlineEl.appendChild(div);
+    });
+  }
+
+  function setOnlineStatus(){
+    username = userInput.value.trim()||"anon";
+    const userRef = rtdb.ref(`online/${username}`);
+    userRef.set({name:username, avatar:avatarURL, room:currentRoom});
+    userRef.onDisconnect().remove();
+  }
+  setOnlineStatus();
+
+  // ADD MESSAGE
+  function addMessage(msg, isMe){
+    const wrap = document.createElement("div");
+    wrap.className="msg"+(isMe?" me":"");
+    const meta=document.createElement("div"); meta.className="meta";
+    meta.textContent=msg.name+" • "+new Date(msg.time).toLocaleTimeString();
+    const text=document.createElement("div"); text.className="text"; text.textContent=msg.text;
+    wrap.appendChild(meta); wrap.appendChild(text);
+    chatEl.appendChild(wrap); chatEl.scrollTop=chatEl.scrollHeight;
+  }
+
+  // TYPING INDICATOR
+  msgInput.addEventListener("input", ()=>{
+    rtdb.ref(`typing/${currentRoom}/${username}`).set(true);
+    clearTimeout(typingTimeout);
+    typingTimeout = setTimeout(()=>{
+      rtdb.ref(`typing/${currentRoom}/${username}`).remove();
+    },1000);
+  });
+
+  // SEND MESSAGE
+  formEl.addEventListener("submit", e=>{
+    e.preventDefault();
+    if(!msgInput.value.trim()) return;
+    const msg={name:username,text:msgInput.value.trim(),time:Date.now(),room:currentRoom, avatar:avatarURL};
+    db.collection("messages").add(msg);
+    msgInput.value="";
+  });
+
+  // CLEAR CHAT (only local)
+  document.getElementById("clear").onclick = ()=>{
+    chatEl.innerHTML="";
+  };
+
+  // LOAD MESSAGES
+  function loadMessages(){
+    db.collection("messages").where("room","==",currentRoom).orderBy("time")
+    .onSnapshot(snapshot=>{
+      chatEl.innerHTML="";
+      snapshot.forEach(doc=>{
+        const msg=doc.data();
+        addMessage(msg,msg.name===username);
+      });
+    });
+  }
+  loadMessages();
+
+  // ONLINE USERS LIST
+  rtdb.ref("online").on("value", snap=>{
+    const users=[];
+    snap.forEach(u=>{ if(u.val().room===currentRoom) users.push(u.val()); });
+    updateOnlineUsers(users);
+  });
+
+  // TYPING INDICATOR DISPLAY
+  rtdb.ref(`typing/${currentRoom}`).on("value", snap=>{
+    const names=[];
+    snap.forEach(c=>names.push(c.key));
+    typingEl.textContent = names.length? names.join(", ")+" is typing..." : "";
+  });
+
+</script>
 </body>
 </html>
