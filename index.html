@@ -6,103 +6,64 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
 <style>
-:root{
-  --bg:#eef3ff;
-  --panel:#dbe6ff;
-  --card:#ffffff;
-  --me:#a8c7ff;
-  --other:#e7edff;
+:root {
+  --bg:#f0f4ff;
+  --panel:#dce4ff;
+  --chat-bg:#ffffff;
+  --my-msg:#a8c7ff;
+  --other-msg:#e7edff;
   --accent:#5b7cfa;
+  --text:#1b1b1b;
+  --meta:#555;
 }
 
-*{box-sizing:border-box;font-family:Inter}
-body{margin:0;height:100vh;display:flex;background:var(--bg)}
+* {margin:0; padding:0; box-sizing:border-box; font-family:'Inter',sans-serif;}
+body {display:flex; height:100vh; background:var(--bg); color:var(--text);}
 
-#sidebar{
+#sidebar {
   width:240px;
   background:var(--panel);
-  padding:12px;
   display:flex;
   flex-direction:column;
+  padding:12px;
   gap:10px;
-}
-
-h2{margin:4px 0}
-
-button{
-  padding:6px;
-  border:none;
-  border-radius:6px;
-  background:var(--accent);
-  color:white;
-  font-weight:600;
-  cursor:pointer;
-}
-
-.room, .user{
-  display:flex;
-  align-items:center;
-  justify-content:space-between;
-  gap:8px;
-  background:white;
-  padding:6px 8px;
-  border-radius:6px;
-  margin-bottom:6px;
-  cursor:pointer;
-}
-
-.room.selected, .user.selected{background:var(--accent); color:white;}
-.avatar{
-  width:32px;height:32px;
-  border-radius:50%;
-  background:var(--accent);
-  color:white;
-  display:flex;
-  align-items:center;
-  justify-content:center;
-  font-weight:700;
-}
-
-#chat-wrap{
-  flex:1;
-  display:flex;
-  flex-direction:column;
-}
-
-#chat{
-  flex:1;
-  padding:12px;
   overflow-y:auto;
+}
+#sidebar h2 {margin-bottom:6px;}
+#rooms, #online-users {margin-bottom:16px;}
+.room, .user {
   display:flex;
-  flex-direction:column;
-  gap:6px;
+  justify-content:space-between;
+  align-items:center;
+  padding:6px 8px;
+  margin-bottom:6px;
+  border-radius:8px;
+  cursor:pointer;
+  background:#cfe0ff;
 }
+.room.selected, .user.selected {background:var(--accent); color:#fff;}
+.room:hover, .user:hover {background:#b0c9eb;}
+.avatar {width:32px; height:32px; border-radius:50%; background:var(--accent); color:white; display:flex; align-items:center; justify-content:center; font-weight:700; margin-right:6px; flex-shrink:0;}
 
-.msg{
-  max-width:70%;
-  padding:10px;
-  border-radius:14px;
-}
+#chat-container {flex:1; display:flex; flex-direction:column; background:var(--chat-bg);}
+#chat {flex:1; padding:12px; overflow-y:auto; display:flex; flex-direction:column; gap:6px;}
 
-.me{align-self:flex-end;background:var(--me);}
-.other{align-self:flex-start;background:var(--other);}
+.msg {max-width:70%; padding:10px 14px; border-radius:14px; position:relative; word-wrap:break-word;}
+.me {align-self:flex-end; background:var(--my-msg);}
+.other {align-self:flex-start; background:var(--other-msg);}
+.meta {font-size:0.75rem; color:var(--meta); margin-bottom:2px;}
+.typing {font-size:0.75rem; font-style:italic; color:#888; margin-left:6px;}
 
-.meta{font-size:12px;opacity:.6}
+#form {display:flex; gap:6px; padding:10px; background:var(--panel);}
+#msg {flex:1; padding:10px; border-radius:8px; border:1px solid #aaa; font-size:1rem;}
+button {padding:10px 14px; border:none; border-radius:8px; background:var(--accent); color:#fff; cursor:pointer; font-weight:bold;}
+button:disabled {opacity:0.5; cursor:default;}
 
-#typing{font-size:12px;font-style:italic;margin-left:12px}
-
-form{
-  display:flex;
-  gap:6px;
-  padding:10px;
-  background:var(--panel);
-}
-
-input{
-  flex:1;
-  padding:10px;
-  border-radius:6px;
-  border:1px solid #aaa;
+@media(max-width:768px){
+  #sidebar {width:180px; font-size:0.9rem;}
+  .avatar {width:24px; height:24px;}
+  #msg {font-size:0.9rem;}
+  button {padding:8px 12px; font-size:0.9rem;}
 }
 </style>
 </head>
@@ -110,23 +71,24 @@ input{
 
 <div id="sidebar">
   <h2>Rooms</h2>
-  <div id="rooms"></div>
-  <input id="new-room-name" placeholder="Private room name">
-  <input id="new-room-pass" type="password" placeholder="Password">
-  <button id="create-room">Create Private Room</button>
+  <div id="rooms">
+    <div class="room selected" data-room="General">General</div>
+  </div>
+  <input id="new-room-name" placeholder="New room name" style="padding:6px; border-radius:6px; border:1px solid #aaa; margin-bottom:6px;">
+  <button id="create-room">Create Room</button>
 
   <h2>Online Users</h2>
-  <div id="users"></div>
-  <button onclick="invite()">Invite Friend</button>
-  <button onclick="clearChat()">Clear Chat</button>
+  <div id="online-users"></div>
+  <button id="invite">Invite Friend</button>
+  <button id="clear">Clear Chat</button>
 </div>
 
-<div id="chat-wrap">
+<div id="chat-container">
   <div id="chat"></div>
   <div id="typing"></div>
   <form id="form">
-    <input id="msg" placeholder="Message…" autocomplete="off">
-    <button>Send</button>
+    <input id="msg" placeholder="Type a message..." autocomplete="off">
+    <button type="submit">Send</button>
   </form>
 </div>
 
@@ -139,127 +101,119 @@ firebase.initializeApp({
   authDomain: "live-chat-3d2c3.firebaseapp.com",
   projectId: "live-chat-3d2c3"
 });
+
 const db = firebase.firestore();
 
 /* 👤 USERNAME */
 let name = localStorage.getItem("name");
-while(!name || name.trim().length<2){
+while(!name || name.trim().length < 2){
   name = prompt("Choose a username (2+ letters)");
 }
 name = name.trim();
-localStorage.setItem("name",name);
+localStorage.setItem("name", name);
 
-/* ROOMS */
-let currentRoom = "General";
-const roomsEl = document.getElementById("rooms");
-const chatEl = document.getElementById("chat");
-const usersEl = document.getElementById("users");
-const typingEl = document.getElementById("typing");
-const form = document.getElementById("form");
-const msgInput = document.getElementById("msg");
-const newRoomInput = document.getElementById("new-room-name");
-const newRoomPass = document.getElementById("new-room-pass");
-const createRoomBtn = document.getElementById("create-room");
+/* 🌐 ONLINE USERS */
+const onlineRef = db.collection("online").doc(name);
+onlineRef.set({name});
+window.addEventListener("beforeunload", ()=>onlineRef.delete());
 
-function addRoomButton(name){
-  const div=document.createElement("div");
-  div.className="room";
-  div.textContent=name;
-  div.onclick=()=>joinRoom(name);
-  roomsEl.appendChild(div);
-}
-
-/* Default General Room */
-addRoomButton("General");
-
-/* CREATE PRIVATE ROOM */
-createRoomBtn.onclick=()=>{
-  const r = newRoomInput.value.trim();
-  const p = newRoomPass.value.trim();
-  if(!r || !p) return alert("Enter name and password");
-  db.collection("rooms").doc(r).set({password:p});
-  addRoomButton(r);
-  newRoomInput.value=""; newRoomPass.value="";
-}
-
-/* JOIN ROOM */
-function joinRoom(r){
-  if(r!=="General"){
-    db.collection("rooms").doc(r).get().then(d=>{
-      const pass=prompt("Enter password for "+r);
-      if(!d.exists || pass!==d.data().password) return alert("Wrong password");
-      currentRoom=r;
-      listenMessages(r);
-    });
-  } else {
-    currentRoom="General";
-    listenMessages("General");
-  }
-  document.querySelectorAll(".room").forEach(rb=>rb.classList.remove("selected"));
-  Array.from(roomsEl.children).forEach(rb=>{if(rb.textContent===r) rb.classList.add("selected")});
-}
-
-/* 🟢 ONLINE USERS */
-const userRef = db.collection("online").doc(name);
-userRef.set({name,room:currentRoom});
-window.addEventListener("beforeunload",()=>userRef.delete());
-
+const onlineUsersEl = document.getElementById("online-users");
 db.collection("online").onSnapshot(s=>{
-  usersEl.innerHTML="";
+  onlineUsersEl.innerHTML="";
   s.forEach(d=>{
-    const u=d.data().name;
-    const div=document.createElement("div");
+    const u = d.data().name;
+    const div = document.createElement("div");
     div.className="user";
     div.innerHTML=`<div class="avatar">${u[0].toUpperCase()}</div>${u}`;
-    usersEl.appendChild(div);
+    onlineUsersEl.appendChild(div);
   });
 });
 
-/* 💬 CHAT */
-form.onsubmit=e=>{
-  e.preventDefault();
-  if(!msgInput.value.trim()) return;
-  db.collection("messages").add({
-    user:name,
-    text:msgInput.value,
-    room:currentRoom,
-    time:Date.now()
-  });
-  msgInput.value="";
-};
+/* 💬 ROOMS */
+let currentRoom = "General";
+const roomsEl = document.getElementById("rooms");
+const chatEl = document.getElementById("chat");
+
+function joinRoom(room){
+  currentRoom = room;
+  document.querySelectorAll(".room").forEach(r=>r.classList.remove("selected"));
+  document.querySelector(`[data-room="${room}"]`).classList.add("selected");
+  listenMessages(room);
+}
 
 function listenMessages(room){
   chatEl.innerHTML="";
   db.collection("messages").where("room","==",room).orderBy("time")
-    .onSnapshot(s=>{
+    .onSnapshot(snapshot=>{
       chatEl.innerHTML="";
-      s.forEach(d=>{
-        const m=d.data();
-        const div=document.createElement("div");
-        div.className=`msg ${m.user===name?"me":"other"}`;
+      snapshot.forEach(doc=>{
+        const m = doc.data();
+        const div = document.createElement("div");
+        div.className = `msg ${m.user===name?"me":"other"}`;
         div.innerHTML=`<div class="meta">${m.user}</div>${m.text}`;
         chatEl.appendChild(div);
       });
       chatEl.scrollTop=chatEl.scrollHeight;
     });
 }
-listenMessages(currentRoom);
 
-/* ✍️ TYPING */
-msgInput.oninput=()=>{
-  db.collection("typing").doc(name).set({typing:true,room:currentRoom});
-  setTimeout(()=>db.collection("typing").doc(name).delete(),1000);
-};
-db.collection("typing").onSnapshot(s=>{
-  const typingUsers = s.docs.filter(d=>d.id!==name && d.data().room===currentRoom);
-  typingEl.textContent=typingUsers.length?"Someone is typing…":"";
+document.getElementById("create-room").addEventListener("click", ()=>{
+  const r = document.getElementById("new-room-name").value.trim();
+  if(!r) return;
+  const div = document.createElement("div");
+  div.className="room";
+  div.textContent=r;
+  div.dataset.room=r;
+  div.addEventListener("click", ()=>joinRoom(r));
+  roomsEl.appendChild(div);
+  document.getElementById("new-room-name").value="";
 });
 
-/* 🧹 CLEAR CHAT */
-function clearChat(){ chatEl.innerHTML=""; }
+joinRoom(currentRoom);
 
-/* 🔗 INVITE */
-function invite(){ navigator.clipboard.writeText(location.href); alert("Invite link copied 💌"); }
+/* ✉️ SEND MESSAGE */
+const form = document.getElementById("form");
+const msgInput = document.getElementById("msg");
+
+form.onsubmit = e => {
+  e.preventDefault();
+  if(!msgInput.value.trim()) return;
+  db.collection("messages").add({
+    user: name,
+    text: msgInput.value,
+    room: currentRoom,
+    time: Date.now(),
+    typing:false
+  });
+  msgInput.value="";
+};
+
+/* 🧹 CLEAR CHAT (everyone) */
+document.getElementById("clear").addEventListener("click", ()=>{
+  db.collection("messages").get().then(s=>{
+    s.forEach(d=>d.ref.delete());
+  });
+});
+
+/* ✍️ TYPING INDICATOR */
+const typingEl = document.getElementById("typing");
+let typingTimeout;
+msgInput.addEventListener("input", ()=>{
+  db.collection("typing").doc(name).set({typing:true});
+  clearTimeout(typingTimeout);
+  typingTimeout = setTimeout(()=>db.collection("typing").doc(name).delete(), 800);
+});
+
+db.collection("typing").onSnapshot(s=>{
+  const typers = s.docs.map(d=>d.id).filter(u=>u!==name);
+  typingEl.textContent = typers.length ? "Someone is typing…" : "";
+});
+
+/* 🔗 INVITE FRIEND */
+document.getElementById("invite").addEventListener("click", ()=>{
+  navigator.clipboard.writeText(location.href);
+  alert("Invite link copied 💌");
+});
 </script>
 </body>
 </html>
