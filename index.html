@@ -6,50 +6,53 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
 <style>
-:root {
-  --bg:#eef3ff;
-  --panel:#dbe6ff;
+:root{
+  --bg:#e0f0ff;
+  --panel:#cfe8ff;
   --chat-bg:#ffffff;
-  --my-msg:#a8c7ff;
-  --other-msg:#e7edff;
+  --my-msg:#9fc9f2;
+  --other-msg:#dceafc;
   --accent:#5b7cfa;
-  --text:#1b1b1b;
-  --meta:#555;
+  --text:#111;
 }
 
-*{margin:0; padding:0; box-sizing:border-box; font-family:'Inter', sans-serif;}
-
-body{display:flex; height:100vh; background:var(--bg); color:var(--text);}
+*{margin:0;padding:0;box-sizing:border-box;font-family:'Inter',sans-serif;}
+body{display:flex;height:100vh;background:var(--bg);color:var(--text);}
 
 #sidebar{
-  width:250px; background:var(--panel); padding:12px; display:flex; flex-direction:column; gap:12px; overflow-y:auto;
+  width:220px;
+  background:var(--panel);
+  padding:12px;
+  display:flex;
+  flex-direction:column;
+  gap:12px;
 }
-#sidebar h2{margin-bottom:6px;}
-.room, .user{
-  display:flex; justify-content:space-between; align-items:center; padding:6px 8px; border-radius:6px; cursor:pointer; background:#cfe0f5; margin-bottom:6px;
-}
-.room.selected, .user.selected{background:var(--accent); color:#fff;}
-.room:hover, .user:hover{background:#b0c9eb;}
-.avatar{
-  width:32px; height:32px; border-radius:50%; background:var(--accent); color:white; display:flex; align-items:center; justify-content:center; font-weight:700; margin-right:6px; flex-shrink:0;
-}
-#chat-wrap{flex:1; display:flex; flex-direction:column; background:var(--chat-bg);}
-#chat{flex:1; padding:12px; overflow-y:auto; display:flex; flex-direction:column; gap:6px;}
-.msg{max-width:70%; padding:10px; border-radius:14px; position:relative; word-wrap:break-word;}
-.me{align-self:flex-end; background:var(--my-msg);}
-.other{align-self:flex-start; background:var(--other-msg);}
-.meta{font-size:12px; opacity:.6; margin-bottom:2px;}
-.typing{font-size:12px; font-style:italic; color:#888; margin-left:4px;}
-form{display:flex; gap:6px; padding:10px; background:var(--panel);}
-input{flex:1; padding:10px; border-radius:8px; border:1px solid #aaa;}
-button{padding:8px 12px; border:none; border-radius:8px; background:var(--accent); color:white; font-weight:600; cursor:pointer;}
-button:disabled{opacity:0.5; cursor:default;}
+#sidebar h2{font-size:1rem;margin-bottom:4px;}
+#sidebar button{padding:8px;border:none;border-radius:6px;background:var(--accent);color:#fff;font-weight:600;cursor:pointer;}
 
+#rooms, #online-users{display:flex;flex-direction:column;gap:4px;}
+.room, .user{display:flex;align-items:center;justify-content:space-between;padding:6px 8px;border-radius:6px;background:#fff;cursor:pointer;}
+.room.selected{background:var(--accent);color:#fff;}
+.room:hover, .user:hover{background:#b0c9eb;}
+
+.avatar{width:28px;height:28px;border-radius:50%;background:var(--accent);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;margin-right:6px;flex-shrink:0;}
+
+#chat-container{flex:1;display:flex;flex-direction:column;}
+#chat{flex:1;padding:12px;overflow-y:auto;display:flex;flex-direction:column;gap:6px;background:var(--chat-bg);}
+.msg{max-width:70%;padding:10px 14px;border-radius:14px;position:relative;word-wrap:break-word;}
+.me{align-self:flex-end;background:var(--my-msg);}
+.other{align-self:flex-start;background:var(--other-msg);}
+.meta{font-size:0.75rem;color:#555;margin-bottom:2px;}
+.typing{font-size:0.75rem;font-style:italic;color:#888;margin-left:4px;}
+
+#form{display:flex;gap:6px;padding:10px;background:var(--panel);}
+#msg{flex:1;padding:10px;border-radius:6px;border:1px solid #aaa;font-size:1rem;}
+button.send-btn{padding:10px 14px;border:none;border-radius:6px;background:var(--accent);color:#fff;font-weight:bold;cursor:pointer;}
 @media(max-width:768px){
-  #sidebar{width:180px; font-size:0.9rem;}
-  .avatar{width:24px; height:24px;}
-  input{font-size:0.9rem;}
-  button{font-size:0.9rem; padding:6px 10px;}
+  #sidebar{width:150px;}
+  .avatar{width:24px;height:24px;font-size:0.8rem;}
+  #msg{font-size:0.9rem;}
+  button.send-btn{padding:8px 12px;font-size:0.9rem;}
 }
 </style>
 </head>
@@ -58,23 +61,22 @@ button:disabled{opacity:0.5; cursor:default;}
 <div id="sidebar">
   <h2>Rooms</h2>
   <div id="rooms"></div>
-  <input id="new-room-name" placeholder="New room name">
-  <input id="new-room-pass" placeholder="Optional password">
+  <input id="new-room" placeholder="New room name" style="padding:6px;border-radius:6px;border:1px solid #aaa;">
+  <input id="new-pass" placeholder="Private password (optional)" style="padding:6px;border-radius:6px;border:1px solid #aaa;">
   <button id="create-room">Create Room</button>
-  <button id="change-name">Change Username</button>
 
-  <h2>Online Users</h2>
-  <div id="users"></div>
-  <button id="invite-btn">Invite Friend</button>
+  <h2>Online</h2>
+  <div id="online-users"></div>
+  <button onclick="invite()">Invite Friend</button>
   <button id="clear-btn">Clear Chat</button>
 </div>
 
-<div id="chat-wrap">
+<div id="chat-container">
   <div id="chat"></div>
   <div id="typing"></div>
-  <form id="chat-form">
+  <form id="form">
     <input id="msg" placeholder="Type a message…" autocomplete="off">
-    <button>Send</button>
+    <button type="submit" class="send-btn">Send</button>
   </form>
 </div>
 
@@ -82,71 +84,107 @@ button:disabled{opacity:0.5; cursor:default;}
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
 
 <script>
-// 🔐 FIREBASE
-firebase.initializeApp({
-  apiKey:"AIzaSyD9GQMi0v4ItnkJ2uqKtUUQU59DorLrCAg",
-  authDomain:"live-chat-3d2c3.firebaseapp.com",
-  projectId:"live-chat-3d2c3"
-});
+// CONFIG
+const firebaseConfig = {
+  apiKey: "AIzaSyD9GQMi0v4ItnkJ2uqKtUUQU59DorLrCAg",
+  authDomain: "live-chat-3d2c3.firebaseapp.com",
+  projectId: "live-chat-3d2c3"
+};
+firebase.initializeApp(firebaseConfig);
 const db = firebase.firestore();
 
-// 👤 USER
+// USERNAME
 let username = localStorage.getItem("username");
 while(!username || username.trim().length<2){
-  username = prompt("Choose a username (2+ letters):").trim();
+  username = prompt("Enter a username (2+ letters)");
 }
-localStorage.setItem("username", username);
+username = username.trim();
+localStorage.setItem("username",username);
 
-// 🌐 ONLINE USERS
-const usersEl = document.getElementById("users");
+// ROOMS
+let currentRoom = "General";
+const roomsEl = document.getElementById("rooms");
+const newRoomInput = document.getElementById("new-room");
+const newPassInput = document.getElementById("new-pass");
+
+const rooms = {"General":""}; // room name:password
+
+function addRoom(name){
+  const div = document.createElement("div");
+  div.className = "room" + (name===currentRoom?" selected":"");
+  div.textContent = name;
+  div.onclick = ()=>joinRoom(name);
+  roomsEl.appendChild(div);
+}
+
+function joinRoom(name){
+  const pass = rooms[name];
+  if(pass){
+    const input = prompt("Enter password for "+name);
+    if(input!==pass){ alert("Wrong password"); return; }
+  }
+  currentRoom=name;
+  document.querySelectorAll(".room").forEach(r=>r.classList.remove("selected"));
+  Array.from(roomsEl.children).forEach(r=>{ if(r.textContent===name) r.classList.add("selected"); });
+  listenMessages();
+}
+
+document.getElementById("create-room").onclick=()=>{
+  const r = newRoomInput.value.trim();
+  if(!r) return;
+  const pass = newPassInput.value.trim();
+  rooms[r]=pass;
+  addRoom(r);
+  newRoomInput.value=""; newPassInput.value="";
+};
+
+addRoom("General");
+
+// ONLINE USERS
+const usersEl = document.getElementById("online-users");
 const onlineRef = db.collection("online").doc(username);
 onlineRef.set({name:username});
-window.addEventListener("beforeunload", ()=>onlineRef.delete());
+window.addEventListener("beforeunload",()=>onlineRef.delete());
+
 db.collection("online").onSnapshot(snapshot=>{
   usersEl.innerHTML="";
-  snapshot.forEach(doc=>{
-    const u = doc.data().name;
+  snapshot.forEach(d=>{
+    const u = d.data().name;
     const div = document.createElement("div");
     div.className="user";
-    div.innerHTML = `<div class="avatar">${u[0].toUpperCase()}</div>${u}`;
+    div.innerHTML=`<div class="avatar">${u[0].toUpperCase()}</div>${u}`;
     usersEl.appendChild(div);
   });
 });
 
-// 💬 ROOMS
-const roomsEl = document.getElementById("rooms");
-let currentRoom = "General";
-
-function addRoom(name){
-  const div = document.createElement("div");
-  div.className = "room";
-  div.textContent = name;
-  div.addEventListener("click", ()=>joinRoom(name));
-  roomsEl.appendChild(div);
-}
-function joinRoom(name){
-  currentRoom=name;
-  document.querySelectorAll(".room").forEach(r=>r.classList.remove("selected"));
-  [...roomsEl.children].forEach(r=>{if(r.textContent===name) r.classList.add("selected")});
-  listenMessages();
-}
-addRoom("General");
-joinRoom("General");
-
-document.getElementById("create-room").addEventListener("click", ()=>{
-  const rName=document.getElementById("new-room-name").value.trim();
-  const rPass=document.getElementById("new-room-pass").value.trim();
-  if(!rName) return;
-  db.collection("rooms").doc(rName).set({password:rPass});
-  addRoom(rName);
-  document.getElementById("new-room-name").value="";
-  document.getElementById("new-room-pass").value="";
-});
-
-// 💬 MESSAGES
+// CHAT
 const chatEl = document.getElementById("chat");
+const typingEl = document.getElementById("typing");
+const chatForm = document.getElementById("form");
 const msgInput = document.getElementById("msg");
-document.getElementById("chat-form").addEventListener("submit", e=>{
+let unsubscribeMessages = null;
+
+function listenMessages(){
+  if(unsubscribeMessages) unsubscribeMessages();
+  unsubscribeMessages = db.collection("messages")
+    .where("room","==",currentRoom)
+    .orderBy("time")
+    .onSnapshot(snapshot=>{
+      chatEl.innerHTML="";
+      snapshot.forEach(doc=>{
+        const m = doc.data();
+        const div=document.createElement("div");
+        div.className="msg "+(m.user===username?"me":"other");
+        div.innerHTML=`<div class="meta">${m.user}</div>${m.text}`;
+        chatEl.appendChild(div);
+      });
+      chatEl.scrollTop=chatEl.scrollHeight;
+    });
+}
+listenMessages();
+
+// SEND MESSAGE
+chatForm.onsubmit=e=>{
   e.preventDefault();
   if(!msgInput.value.trim()) return;
   db.collection("messages").add({
@@ -156,57 +194,28 @@ document.getElementById("chat-form").addEventListener("submit", e=>{
     time:Date.now()
   });
   msgInput.value="";
-});
+};
 
-// Listen messages per room
-function listenMessages(){
-  db.collection("messages").where("room","==",currentRoom).orderBy("time")
-  .onSnapshot(snapshot=>{
-    chatEl.innerHTML="";
-    snapshot.forEach(doc=>{
-      const m=doc.data();
-      const div=document.createElement("div");
-      div.className = "msg " + (m.user===username?"me":"other");
-      div.innerHTML=`<div class="meta">${m.user}</div>${m.text}`;
-      chatEl.appendChild(div);
-    });
-    chatEl.scrollTop = chatEl.scrollHeight;
+// CLEAR CHAT (everyone can)
+document.getElementById("clear-btn").onclick=()=>{
+  db.collection("messages").get().then(s=>{
+    s.forEach(d=>d.ref.delete());
   });
-}
-listenMessages();
+};
 
-// ✍️ TYPING
+// TYPING INDICATOR
 msgInput.oninput=()=>{
   db.collection("typing").doc(username).set({typing:true});
-  setTimeout(()=>db.collection("typing").doc(username).delete(),1000);
+  setTimeout(()=>db.collection("typing").doc(username).delete(),800);
 };
 db.collection("typing").onSnapshot(s=>{
-  const typingUsers=[...s.docs].map(d=>d.id).filter(u=>u!==username);
-  document.getElementById("typing").textContent=typingUsers.length?"Someone is typing…":"";
+  const typingUsers = s.docs.map(d=>d.id).filter(u=>u!==username);
+  typingEl.textContent=typingUsers.length ? "Someone is typing…" : "";
 });
 
-// 🧹 CLEAR CHAT
-document.getElementById("clear-btn").addEventListener("click",()=>{
-  db.collection("messages").where("room","==",currentRoom).get()
-    .then(s=>s.forEach(d=>d.ref.delete()));
-});
+// INVITE
+function invite(){ navigator.clipboard.writeText(location.href); alert("Invite link copied!"); }
 
-// 🔗 INVITE
-document.getElementById("invite-btn").addEventListener("click",()=>{
-  navigator.clipboard.writeText(location.href);
-  alert("Invite link copied 💌");
-});
-
-// 🔄 CHANGE USERNAME
-document.getElementById("change-name").addEventListener("click",()=>{
-  let newName = prompt("Enter new username (2+ letters):");
-  if(newName && newName.trim().length>=2){
-    onlineRef.delete();
-    username = newName.trim();
-    localStorage.setItem("username",username);
-    db.collection("online").doc(username).set({name:username});
-  }
-});
 </script>
 </body>
 </html>
