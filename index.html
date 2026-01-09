@@ -2,187 +2,223 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Ultimate Class Chat</title>
+<title>Class Chat</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+
 <style>
-:root {
-  --bg-main:#e6f0fa;
-  --sidebar-bg:#d1e3f8;
-  --chat-bg:#ffffff;
-  --my-msg:#9fc9f2;
-  --other-msg:#dceafc;
-  --accent:#7ea7e0;
-  --text:#1b1b1b;
-  --meta:#555;
+:root{
+  --bg:#eef3fb;
+  --sidebar:#dde7f7;
+  --card:#ffffff;
+  --me:#bcd7ff;
+  --other:#e7efff;
+  --accent:#6f9df6;
+  --text:#1f2937;
+  --muted:#6b7280;
 }
 
-* { margin:0; padding:0; box-sizing:border-box; font-family:'Roboto', sans-serif; }
-body { display:flex; height:100vh; background:var(--bg-main); color:var(--text); }
+*{box-sizing:border-box;margin:0;padding:0;font-family:"Inter",sans-serif}
+body{height:100vh;display:flex;background:var(--bg);color:var(--text)}
 
-#sidebar { width:250px; background:var(--sidebar-bg); display:flex; flex-direction:column; padding:12px; overflow-y:auto; }
-#sidebar h2 { margin-bottom:10px; font-size:1.2rem; }
-#rooms, #online-users { margin-bottom:16px; }
-.room, .user { display:flex; justify-content:space-between; align-items:center; padding:6px 8px; margin-bottom:6px; border-radius:6px; cursor:pointer; background:#cfe0f5; }
-.room.selected, .user.selected { background:var(--accent); color:#fff; }
-.room:hover, .user:hover { background:#b0c9eb; }
+#sidebar{
+  width:240px;
+  background:var(--sidebar);
+  padding:12px;
+  display:flex;
+  flex-direction:column;
+  gap:12px;
+}
 
-.avatar-small { width:30px; height:30px; border-radius:50%; margin-right:6px; object-fit:cover; border:1px solid #aaa; }
+h2{font-size:1rem}
 
-#chat-container { flex:1; display:flex; flex-direction:column; background:var(--chat-bg); }
-#chat { flex:1; padding:12px; overflow-y:auto; display:flex; flex-direction:column; gap:6px; }
+.room,.user{
+  padding:8px;
+  border-radius:8px;
+  background:#cfe0fb;
+  cursor:pointer;
+}
 
-.msg { max-width:70%; padding:10px 14px; border-radius:14px; position:relative; word-wrap:break-word; }
-.me { background:var(--my-msg); align-self:flex-end; color:#000; }
-.other { background:var(--other-msg); align-self:flex-start; color:#000; }
+.room.active{background:var(--accent);color:#fff}
 
-.meta { font-size:0.75rem; color:var(--meta); margin-bottom:2px; }
-.typing { font-size:0.7rem; font-style:italic; color:#888; margin-left:4px; }
+#chat-wrap{flex:1;display:flex;flex-direction:column}
 
-#form { display:flex; gap:6px; padding:10px; background:var(--sidebar-bg); }
-#message { flex:1; padding:10px; border-radius:8px; border:1px solid #aaa; font-size:1rem; }
-button { padding:10px 14px; border:none; border-radius:8px; background:var(--accent); color:#fff; cursor:pointer; font-weight:bold; }
-button:disabled { opacity:0.5; cursor:default; }
+#chat{
+  flex:1;
+  padding:12px;
+  overflow-y:auto;
+  display:flex;
+  flex-direction:column;
+  gap:6px;
+}
 
-@media(max-width:768px){
-  #sidebar { width:180px; font-size:0.9rem; }
-  .avatar-small { width:24px; height:24px; }
-  #message { font-size:0.9rem; }
-  button { padding:8px 12px; font-size:0.9rem; }
+.msg{
+  max-width:70%;
+  padding:10px 14px;
+  border-radius:14px;
+}
+
+.me{align-self:flex-end;background:var(--me)}
+.other{align-self:flex-start;background:var(--other)}
+
+.meta{font-size:.7rem;color:var(--muted);margin-bottom:2px}
+
+#typing{
+  font-size:.75rem;
+  color:var(--muted);
+  padding-left:12px;
+}
+
+#form{
+  display:flex;
+  gap:6px;
+  padding:10px;
+  background:var(--sidebar);
+}
+
+#message{
+  flex:1;
+  padding:10px;
+  border-radius:8px;
+  border:1px solid #c7d2fe;
+}
+
+button{
+  padding:10px 14px;
+  border:none;
+  border-radius:8px;
+  background:var(--accent);
+  color:#fff;
+  font-weight:600;
+}
+
+@media(max-width:700px){
+  #sidebar{width:150px}
 }
 </style>
 </head>
+
 <body>
 
 <div id="sidebar">
   <h2>Rooms</h2>
-  <div id="rooms">
-    <div class="room selected" data-room="General">General</div>
-  </div>
-  <input id="new-room-name" placeholder="New room name" style="padding:6px; border-radius:6px; border:1px solid #aaa; margin-bottom:6px;">
-  <button id="create-room">Create Room</button>
-  
-  <h2>Online Users</h2>
-  <div id="online-users"></div>
+  <div id="rooms"></div>
+  <input id="roomName" placeholder="New room" />
+  <button id="addRoom">Create</button>
+
+  <h2>Online</h2>
+  <div id="users"></div>
 </div>
 
-<div id="chat-container">
+<div id="chat-wrap">
   <div id="chat"></div>
+  <div id="typing"></div>
   <form id="form">
-    <input id="message" autocomplete="off" placeholder="Type a message...">
-    <button id="send" type="submit">Send</button>
+    <input id="message" placeholder="Type a message…" />
+    <button>Send</button>
     <button type="button" id="clear">Clear</button>
   </form>
 </div>
 
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+
 <script>
-const firebaseConfig = {
-  apiKey: "AIzaSyD9GQMi0v4ItnkJ2uqKtUUQU59DorLrCAg",
-  authDomain: "live-chat-3d2c3.firebaseapp.com",
-  projectId: "live-chat-3d2c3",
-  storageBucket: "live-chat-3d2c3.firebasestorage.app",
-  messagingSenderId: "550798266942",
-  appId: "1:550798266942:web:2ce678f70e4f64d6f7376f",
-  measurementId: "G-L0K72L8894"
-};
-firebase.initializeApp(firebaseConfig);
-const db = firebase.firestore();
-
-let username = localStorage.getItem("username") || "User"+Math.floor(Math.random()*1000);
-let currentRoom = "General";
-
-const chatEl = document.getElementById("chat");
-const formEl = document.getElementById("form");
-const msgInput = document.getElementById("message");
-const sendBtn = document.getElementById("send");
-const clearBtn = document.getElementById("clear");
-const onlineUsersEl = document.getElementById("online-users");
-const roomsEl = document.getElementById("rooms");
-const newRoomInput = document.getElementById("new-room-name");
-const createRoomBtn = document.getElementById("create-room");
-
-// --- MESSAGES ---
-function addMessage(msg){
-  const div=document.createElement("div");
-  div.className= msg.sender===username ? "msg me" : "msg other";
-
-  const meta = document.createElement("div");
-  meta.className="meta";
-  meta.textContent = msg.sender;
-
-  const text = document.createElement("div");
-  text.textContent = msg.text;
-
-  const typing = document.createElement("div");
-  typing.className="typing";
-  typing.textContent = msg.typing ? "…" : "";
-
-  div.appendChild(meta);
-  div.appendChild(text);
-  div.appendChild(typing);
-  chatEl.appendChild(div);
-  chatEl.scrollTop = chatEl.scrollHeight;
-}
-
-// --- ONLINE USERS ---
-const onlineRef = db.collection("online");
-function setOnline(){
-  onlineRef.doc(username).set({online:true});
-}
-setOnline();
-window.addEventListener("beforeunload", ()=>onlineRef.doc(username).delete());
-onlineRef.onSnapshot(snapshot=>{
-  const users = snapshot.docs.map(d=>d.id);
-  onlineUsersEl.innerHTML="";
-  users.forEach(u=>{
-    const div=document.createElement("div");
-    div.className="user";
-    div.textContent=u;
-    onlineUsersEl.appendChild(div);
-  });
+firebase.initializeApp({
+  apiKey:"AIzaSyD9GQMi0v4ItnkJ2uqKtUUQU59DorLrCAg",
+  authDomain:"live-chat-3d2c3.firebaseapp.com",
+  projectId:"live-chat-3d2c3"
 });
 
-// --- ROOMS ---
-function joinRoom(room){
-  currentRoom=room;
-  document.querySelectorAll(".room").forEach(r=>r.classList.remove("selected"));
-  document.querySelector(`[data-room="${room}"]`).classList.add("selected");
-  listenMessages(room);
+const db=firebase.firestore();
+const id=crypto.randomUUID();
+
+let username=localStorage.getItem("username");
+if(!username){
+  username="User"+Math.floor(Math.random()*10000);
+  localStorage.setItem("username",username);
 }
-function listenMessages(room){
-  chatEl.innerHTML="";
-  db.collection("messages").where("room","==",room).orderBy("time")
-    .onSnapshot(snapshot=>{
-      chatEl.innerHTML="";
-      snapshot.forEach(doc=>addMessage(doc.data()));
+
+let room="General";
+let unsub=null;
+
+const chat=document.getElementById("chat");
+const typingEl=document.getElementById("typing");
+
+function loadRoom(r){
+  room=r;
+  chat.innerHTML="";
+  if(unsub)unsub();
+  unsub=db.collection("messages")
+    .where("room","==",room)
+    .orderBy("time")
+    .onSnapshot(s=>{
+      chat.innerHTML="";
+      s.forEach(d=>{
+        const m=d.data();
+        const div=document.createElement("div");
+        div.className="msg "+(m.sender===username?"me":"other");
+        div.innerHTML=`<div class="meta">${m.sender}</div>${m.text}`;
+        chat.appendChild(div);
+      });
+      chat.scrollTop=chat.scrollHeight;
     });
 }
-createRoomBtn.addEventListener("click", ()=>{
-  const r=newRoomInput.value.trim(); if(!r) return;
-  const div=document.createElement("div"); div.className="room"; div.textContent=r; div.dataset.room=r;
-  div.addEventListener("click",()=>joinRoom(r));
-  roomsEl.appendChild(div); newRoomInput.value="";
-});
-joinRoom(currentRoom);
 
-// --- SEND MESSAGE ---
-formEl.addEventListener("submit", e=>{
-  e.preventDefault();
-  if(!msgInput.value.trim()) return;
-  db.collection("messages").add({
-    text: msgInput.value,
-    sender: username,
-    room: currentRoom,
-    time: Date.now(),
-    typing:false
+db.collection("rooms").onSnapshot(s=>{
+  const r=document.getElementById("rooms");
+  r.innerHTML="";
+  s.forEach(d=>{
+    const div=document.createElement("div");
+    div.className="room"+(d.id===room?" active":"");
+    div.textContent=d.id;
+    div.onclick=()=>loadRoom(d.id);
+    r.appendChild(div);
   });
-  msgInput.value="";
 });
 
-// --- CLEAR ---
-clearBtn.addEventListener("click", ()=>{ chatEl.innerHTML=""; });
+db.collection("rooms").doc("General").set({ok:true});
+
+document.getElementById("addRoom").onclick=()=>{
+  const n=document.getElementById("roomName").value.trim();
+  if(n)db.collection("rooms").doc(n).set({ok:true});
+};
+
+document.getElementById("form").onsubmit=e=>{
+  e.preventDefault();
+  const t=message.value.trim();
+  if(!t)return;
+  db.collection("messages").add({room,text:t,sender:username,time:Date.now()});
+  message.value="";
+};
+
+message.oninput=()=>{
+  db.collection("typing").doc(room).set({user:username});
+};
+
+db.collection("typing").doc(room).onSnapshot(d=>{
+  if(d.exists&&d.data().user!==username){
+    typingEl.textContent=d.data().user+" is typing…";
+    setTimeout(()=>typingEl.textContent="",1500);
+  }
+});
+
+document.getElementById("clear").onclick=()=>chat.innerHTML="";
+
+db.collection("online").doc(id).set({name:username});
+db.collection("online").onSnapshot(s=>{
+  users.innerHTML="";
+  s.forEach(d=>{
+    const div=document.createElement("div");
+    div.className="user";
+    div.textContent=d.data().name;
+    users.appendChild(div);
+  });
+});
+
+loadRoom("General");
 </script>
+
 </body>
 </html>
