@@ -54,6 +54,10 @@ button{padding:8px 12px;border:none;border-radius:6px;background:var(--accent);c
 
   <button id="invite-btn">Invite Friend</button>
   <button id="clear-btn">Clear Chat</button>
+
+  <h2>Change Username</h2>
+  <input id="change-username" placeholder="New username">
+  <button id="change-btn">Change Username</button>
 </div>
 
 <div id="chat-wrap">
@@ -96,6 +100,8 @@ const newRoomPass=document.getElementById("new-room-pass");
 const createRoomBtn=document.getElementById("create-room");
 const clearBtn=document.getElementById("clear-btn");
 const inviteBtn=document.getElementById("invite-btn");
+const changeInput=document.getElementById("change-username");
+const changeBtn=document.getElementById("change-btn");
 
 let currentRoom="General";
 let rooms={};
@@ -136,9 +142,11 @@ function joinRoom(room){
 }
 
 // --- LISTEN MESSAGES ---
+let unsubscribe=null;
 function listenMessages(){
+  if(unsubscribe) unsubscribe();
   chatEl.innerHTML="";
-  db.collection("messages").where("room","==",currentRoom).orderBy("time")
+  unsubscribe = db.collection("messages").where("room","==",currentRoom).orderBy("time")
     .onSnapshot(snapshot=>{
       chatEl.innerHTML="";
       snapshot.forEach(d=>{
@@ -206,6 +214,18 @@ clearBtn.onclick=()=>{ chatEl.innerHTML=""; };
 
 // --- INVITE ---
 inviteBtn.onclick=()=>{ navigator.clipboard.writeText(location.href); alert("Invite link copied!"); };
+
+// --- CHANGE USERNAME ---
+changeBtn.onclick=()=>{
+  const newName=changeInput.value.trim();
+  if(!newName || newName.length<2) return alert("Enter 2+ letters");
+  onlineRef.delete();
+  username=newName;
+  localStorage.setItem("username",username);
+  const newRef=db.collection("online").doc(username);
+  newRef.set({name:username});
+  window.location.reload();
+};
 </script>
 </body>
 </html>
