@@ -1,29 +1,32 @@
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
 import { 
-  getFirestore, collection, addDoc, serverTimestamp, query, orderBy, 
-  onSnapshot, doc, getDoc, setDoc, deleteDoc, getDocs, where 
+  getFirestore, collection, addDoc, serverTimestamp,
+  onSnapshot, doc, setDoc, deleteDoc, getDocs, where, query 
 } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
-import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
 
-// Firebase config
+// YOUR REAL CONFIG
 const firebaseConfig = {
-  apiKey: "YOUR_KEY",
+  apiKey: "AIzaSyD9GQMi0v4ItnkJ2uqKtUUQU59DorLrCAg",
   authDomain: "live-chat-3d2c3.firebaseapp.com",
   projectId: "live-chat-3d2c3",
   storageBucket: "live-chat-3d2c3.firebasestorage.app",
   messagingSenderId: "550798266942",
-  appId: "1:550798266942:web:2ce678f70e4f64d6f7376f"
+  appId: "1:550798266942:web:2ce678f70e4f64d6f7376f",
+  measurementId: "G-L0K72L8894"
 };
 
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 const auth = getAuth();
-await signInAnonymously(auth);
 
-const username = auth.currentUser.uid; // unique per session
+let username = "";
+let currentRoom = "General";
+let unsubscribeMessages = null;
+let createdRoomsThisSession = [];
 
-// Elements
+// DOM
 const chatDiv = document.getElementById("chat");
 const messageInput = document.getElementById("messageInput");
 const sendBtn = document.getElementById("sendBtn");
@@ -32,97 +35,78 @@ const roomsDiv = document.getElementById("rooms");
 const newRoomName = document.getElementById("newRoomName");
 const newRoomPass = document.getElementById("newRoomPass");
 const createRoomBtn = document.getElementById("createRoomBtn");
-const deleteRoomBtn = document.getElementById("deleteRoomBtn");
 
-let currentRoom = "General";
-let unsubscribeMessages = null;
-let roomCreators = {};
+// --- AUTH ---
+signInAnonymously(auth);
 
-// Ensure General exists
-const generalRoomDoc = doc(db,"rooms","General");
-const generalSnap = await getDoc(generalRoomDoc);
-if(!generalSnap.exists()){
-  await setDoc(generalRoomDoc,{
+onAuthStateChanged(auth, async (user) => {
+  if (user) {
+    username = user.uid;
+    await ensureGeneral();
+    loadRooms();
+    joinRoom("General", "");
+  }
+});
+
+// --- ENSURE GENERAL EXISTS ---
+async function ensureGeneral() {
+  await setDoc(doc(db,"rooms","General"), {
     name:"General",
     password:"",
     creator:"system"
-  });
+  }, { merge:true });
 }
 
-// Load Rooms
-function loadRooms(){
+// --- LOAD ROOMS ---
+function loadRooms() {
   onSnapshot(collection(db,"rooms"), snap=>{
     roomsDiv.innerHTML="";
     snap.forEach(d=>{
       const r = d.data();
-      roomCreators[r.name] = r.creator;
-
       const div = document.createElement("div");
       div.className="room";
       if(r.name===currentRoom) div.classList.add("selected");
       div.textContent=r.name;
       div.onclick=()=>joinRoom(r.name,r.password);
-
       roomsDiv.appendChild(div);
     });
   });
 }
-loadRooms();
 
-// Join Room
-function joinRoom(name,pass){
+// --- JOIN ROOM ---
+function joinRoom(name, pass) {
   if(pass){
-    const entered = prompt("Enter password for "+name);
+    const entered = prompt("Enter password");
     if(entered!==pass) return alert("Wrong password");
   }
-
   currentRoom = name;
   listenMessages();
-  highlightRoom();
 }
 
-// Highlight selected room
-function highlightRoom(){
-  document.querySelectorAll(".room").forEach(r=>{
-    if(r.textContent===currentRoom){
-      r.classList.add("selected");
-    } else {
-      r.classList.remove("selected");
-    }
-  });
-}
-
-// Listen to messages (room filtered)
+// --- LISTEN MESSAGES (NO INDEX REQUIRED) ---
 function listenMessages(){
   if(unsubscribeMessages) unsubscribeMessages();
-
   chatDiv.innerHTML="";
 
   const q = query(
     collection(db,"messages"),
-    where("room","==",currentRoom),
-    orderBy("createdAt")
+    where("room","==",currentRoom)
   );
 
-  unsubscribeMessages = onSnapshot(q,snap=>{
+  unsubscribeMessages = onSnapshot(q, snap=>{
     chatDiv.innerHTML="";
     snap.forEach(docSnap=>{
       const m = docSnap.data();
-
       const div = document.createElement("div");
       div.className="message "+(m.sender===username?"mine":"other");
       div.innerHTML=`<div class="sender">${m.sender}</div>${m.text}`;
-
       chatDiv.appendChild(div);
     });
-
     chatDiv.scrollTop = chatDiv.scrollHeight;
   });
 }
 
-joinRoom("General","");
-
-// Send Message
+// --- SEND MESSAGE ---
 async function sendMessage(){
   const text = messageInput.value.trim();
   if(!text) return;
@@ -136,14 +120,15 @@ async function sendMessage(){
 
   messageInput.value="";
 }
-sendBtn.addEventListener("click",sendMessage);
-messageInput.addEventListener("keypress",e=>{
+
+sendBtn.onclick = sendMessage;
+messageInput.addEventListener("keypress", e=>{
   if(e.key==="Enter") sendMessage();
 });
 
-// Clear Chat (permanent)
-clearBtn.addEventListener("click", async ()=>{
-  if(!confirm("Clear all messages in this room?")) return;
+// --- CLEAR CHAT (PERMANENT) ---
+clearBtn.onclick = async ()=>{
+  if(!confirm("Clear chat forever?")) return;
 
   const snap = await getDocs(
     query(collection(db,"messages"), where("room","==",currentRoom))
@@ -152,14 +137,13 @@ clearBtn.addEventListener("click", async ()=>{
   for(const d of snap.docs){
     await deleteDoc(d.ref);
   }
-});
+};
 
-// Create Room
-createRoomBtn.addEventListener("click", async ()=>{
+// --- CREATE ROOM ---
+createRoomBtn.onclick = async ()=>{
   const name = newRoomName.value.trim();
   const pass = newRoomPass.value.trim();
-
-  if(!name) return alert("Enter room name");
+  if(!name) return;
 
   await setDoc(doc(db,"rooms",name),{
     name,
@@ -167,35 +151,27 @@ createRoomBtn.addEventListener("click", async ()=>{
     creator:username
   });
 
+  createdRoomsThisSession.push(name);
+
   newRoomName.value="";
   newRoomPass.value="";
-
   joinRoom(name,pass);
-});
+};
 
-// Delete Room
-deleteRoomBtn.addEventListener("click", async ()=>{
-  if(currentRoom==="General"){
-    return alert("Cannot delete General room");
+// --- AUTO DELETE ROOM ON TAB CLOSE ---
+window.addEventListener("beforeunload", async ()=>{
+  for(const room of createdRoomsThisSession){
+
+    // delete messages in that room
+    const snap = await getDocs(
+      query(collection(db,"messages"), where("room","==",room))
+    );
+
+    for(const d of snap.docs){
+      await deleteDoc(d.ref);
+    }
+
+    await deleteDoc(doc(db,"rooms",room));
   }
-
-  if(roomCreators[currentRoom]!==username){
-    return alert("Only the creator can delete this room");
-  }
-
-  if(!confirm(`Delete "${currentRoom}" and all messages?`)) return;
-
-  // delete messages first
-  const snap = await getDocs(
-    query(collection(db,"messages"), where("room","==",currentRoom))
-  );
-
-  for(const d of snap.docs){
-    await deleteDoc(d.ref);
-  }
-
-  await deleteDoc(doc(db,"rooms",currentRoom));
-
-  joinRoom("General","");
 });
 </script>
