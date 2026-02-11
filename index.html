@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -22,40 +22,39 @@ button { padding:10px 15px; border:none; border-radius:12px; background:#6366f1;
 #createRoomArea { display:flex; gap:5px; padding:10px; background:rgba(0,0,0,0.2); }
 #createRoomArea input { padding:5px; border-radius:12px; border:none; outline:none; }
 #deleteRoomBtn { background:#f87171; }
-#leaveRoomBtn { background:#f59e0b; margin-left:5px; }
-#usernameInput { margin:10px; padding:5px; border-radius:12px; border:none; outline:none; width:200px; }
 </style>
 </head>
 <body>
 
 <header>Educational Chat</header>
 
-<input id="usernameInput" placeholder="Enter your name" />
+<div id="usernameArea">
+  <input id="usernameInput" placeholder="Enter your name..." />
+  <button id="setUsernameBtn">Start Chat</button>
+</div>
 
-<div id="rooms"></div>
+<div id="rooms" style="display:none;"></div>
+<div id="chat" style="display:none;"></div>
 
-<div id="chat"></div>
-
-<div id="createRoomArea">
+<div id="createRoomArea" style="display:none;">
   <input id="newRoomName" placeholder="Room name" />
   <input id="newRoomPass" placeholder="Password (optional)" />
   <button id="createRoomBtn">Create Room</button>
   <button id="deleteRoomBtn">Delete Room</button>
-  <button id="leaveRoomBtn">Leave Room</button>
 </div>
 
-<div id="inputArea">
+<div id="inputArea" style="display:none;">
   <input id="messageInput" placeholder="Type a message..." />
   <button id="sendBtn">Send</button>
   <button id="clearBtn">Clear Chat</button>
 </div>
 
-<!-- Firebase -->
-<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
 
 <script>
+// --- Firebase config ---
 const firebaseConfig = {
   apiKey: "AIzaSyD9GQMi0v4ItnkJ2uqKtUUQU59DorLrCAg",
   authDomain: "live-chat-3d2c3.firebaseapp.com",
@@ -65,18 +64,16 @@ const firebaseConfig = {
   appId: "1:550798266942:web:2ce678f70e4f64d6f7376f"
 };
 
-// Initialize Firebase
 firebase.initializeApp(firebaseConfig);
 const db = firebase.firestore();
-const auth = firebase.auth();
+firebase.auth().signInAnonymously();
 
 let username = "";
 let currentRoom = "General";
+let roomCreators = {};
 let unsubscribeMessages = null;
-let createdRoomsThisSession = [];
 
-// DOM
-const usernameInput = document.getElementById("usernameInput");
+// --- DOM elements ---
 const chatDiv = document.getElementById("chat");
 const roomsDiv = document.getElementById("rooms");
 const messageInput = document.getElementById("messageInput");
@@ -84,117 +81,123 @@ const sendBtn = document.getElementById("sendBtn");
 const clearBtn = document.getElementById("clearBtn");
 const createRoomBtn = document.getElementById("createRoomBtn");
 const deleteRoomBtn = document.getElementById("deleteRoomBtn");
-const leaveRoomBtn = document.getElementById("leaveRoomBtn");
 const newRoomName = document.getElementById("newRoomName");
 const newRoomPass = document.getElementById("newRoomPass");
+const usernameInput = document.getElementById("usernameInput");
+const setUsernameBtn = document.getElementById("setUsernameBtn");
 
-// Auth
-auth.signInAnonymously().then(async () => {
-  await ensureGeneral();
-  usernameInput.addEventListener("change", ()=>{ 
-    username = usernameInput.value.trim() || "Anonymous"; 
-  });
-  username = "Anonymous";
-  loadRooms();
-  joinRoom("General");
-}).catch(console.error);
+// --- Set username ---
+setUsernameBtn.onclick = ()=>{
+  const name = usernameInput.value.trim();
+  if(!name) return alert("Enter your name!");
+  username = name;
 
-// Ensure General exists
-async function ensureGeneral() {
-  const generalDoc = db.collection("rooms").doc("General");
-  const docSnap = await generalDoc.get();
-  if(!docSnap.exists) await generalDoc.set({name:"General", password:""});
+  // show chat UI
+  document.getElementById("usernameArea").style.display = "none";
+  roomsDiv.style.display = "flex";
+  chatDiv.style.display = "flex";
+  document.getElementById("createRoomArea").style.display = "flex";
+  document.getElementById("inputArea").style.display = "flex";
+
+  ensureGeneral().then(loadRooms).then(()=>joinRoom("General"));
+};
+
+// --- Ensure General room exists ---
+async function ensureGeneral(){
+  const docRef = db.collection("rooms").doc("General");
+  const docSnap = await docRef.get();
+  if(!docSnap.exists) await docRef.set({name:"General", password:"", creator:"system"});
 }
 
-// Load rooms
-function loadRooms() {
+// --- Load rooms ---
+function loadRooms(){
   db.collection("rooms").onSnapshot(snap=>{
-    roomsDiv.innerHTML = "";
+    roomsDiv.innerHTML="";
     snap.forEach(d=>{
       const r = d.data();
+      roomCreators[r.name] = r.creator;
       const div = document.createElement("div");
-      div.className = "room " + (r.name===currentRoom ? "selected" : "");
+      div.className = "room " + (r.name===currentRoom?"selected":"");
       div.textContent = r.name;
-      div.onclick = ()=> joinRoom(r.name, r.password);
+      div.onclick = ()=> joinRoom(r.name,r.password);
       roomsDiv.appendChild(div);
     });
   });
 }
 
-// Join room
-function joinRoom(name, pass="") {
+// --- Join room ---
+function joinRoom(name, pass=""){
   if(pass){
-    const entered = prompt(`Enter password for ${name}`);
+    const entered = prompt("Enter password for "+name);
     if(entered!==pass) return alert("Wrong password");
   }
   currentRoom = name;
   listenMessages();
+  updateSelectedRoom();
 }
 
-// Listen messages
-function listenMessages() {
-  if(unsubscribeMessages) unsubscribeMessages();
-  chatDiv.innerHTML = "";
-  const q = db.collection("messages").where("room","==",currentRoom).orderBy("createdAt");
-  unsubscribeMessages = q.onSnapshot(snap=>{
-    chatDiv.innerHTML = "";
-    snap.forEach(docSnap=>{
-      const m = docSnap.data();
-      const div = document.createElement("div");
-      div.className = "message " + (m.sender===username?"mine":"other");
-      div.innerHTML = `<div class="sender">${m.sender}</div>${m.text}`;
-      chatDiv.appendChild(div);
-    });
-    chatDiv.scrollTop = chatDiv.scrollHeight;
+// --- Highlight selected room ---
+function updateSelectedRoom(){
+  Array.from(roomsDiv.children).forEach(div=>{
+    div.classList.toggle("selected", div.textContent===currentRoom);
   });
 }
 
-// Send message
+// --- Listen to messages ---
+function listenMessages(){
+  if(unsubscribeMessages) unsubscribeMessages();
+  chatDiv.innerHTML="";
+  unsubscribeMessages = db.collection("messages").where("room","==",currentRoom)
+    .orderBy("createdAt")
+    .onSnapshot(snap=>{
+      chatDiv.innerHTML="";
+      snap.forEach(docSnap=>{
+        const m = docSnap.data();
+        const div = document.createElement("div");
+        div.className = "message "+(m.sender===username?"mine":"other");
+        div.innerHTML = `<div class="sender">${m.sender}</div>${m.text}`;
+        chatDiv.appendChild(div);
+      });
+      chatDiv.scrollTop = chatDiv.scrollHeight;
+    });
+}
+
+// --- Send message ---
 sendBtn.onclick = async ()=>{
-  if(!username) { alert("Enter your name first!"); return; }
   const text = messageInput.value.trim();
   if(!text) return;
-  await db.collection("messages").add({text, sender:username, room:currentRoom, createdAt:firebase.firestore.FieldValue.serverTimestamp()});
-  messageInput.value = "";
+  await db.collection("messages").add({
+    text, sender:username, room:currentRoom, createdAt:firebase.firestore.FieldValue.serverTimestamp()
+  });
+  messageInput.value="";
 };
-messageInput.addEventListener("keypress", e=>{ if(e.key==="Enter") sendBtn.onclick(); });
+messageInput.addEventListener("keypress", e=>{if(e.key==="Enter") sendBtn.onclick();});
 
-// Clear chat
+// --- Clear chat ---
 clearBtn.onclick = async ()=>{
-  if(!confirm("Clear chat for this room?")) return;
+  if(!confirm("Clear chat forever?")) return;
   const snap = await db.collection("messages").where("room","==",currentRoom).get();
   snap.forEach(d=>d.ref.delete());
 };
 
-// Create room
+// --- Create room ---
 createRoomBtn.onclick = async ()=>{
   const name = newRoomName.value.trim();
   const pass = newRoomPass.value.trim();
   if(!name) return;
-  await db.collection("rooms").doc(name).set({name,password:pass});
-  createdRoomsThisSession.push(name);
+  await db.collection("rooms").doc(name).set({name,password:pass,creator:username});
   newRoomName.value=""; newRoomPass.value="";
   joinRoom(name,pass);
 };
 
-// Delete room (anyone)
+// --- Delete room ---
 deleteRoomBtn.onclick = async ()=>{
-  if(currentRoom==="General") return alert("Cannot delete General room");
+  if(currentRoom==="General") return alert("Cannot delete General");
+  if(roomCreators[currentRoom]!==username) return alert("Only the creator can delete this room");
   if(!confirm(`Delete room "${currentRoom}" and all its messages?`)) return;
   await db.collection("rooms").doc(currentRoom).delete();
   const snap = await db.collection("messages").where("room","==",currentRoom).get();
   snap.forEach(d=>d.ref.delete());
-  joinRoom("General");
-};
-
-// Leave room
-leaveRoomBtn.onclick = async ()=>{
-  for(const room of createdRoomsThisSession){
-    const snap = await db.collection("messages").where("room","==",room).get();
-    snap.forEach(d=>d.ref.delete());
-    await db.collection("rooms").doc(room).delete();
-  }
-  createdRoomsThisSession = [];
   joinRoom("General");
 };
 </script>
