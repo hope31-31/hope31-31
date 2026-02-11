@@ -4,7 +4,6 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Educational Chat</title>
-<!-- Google Font: Poppins -->
 <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
 body {
@@ -39,9 +38,7 @@ header {
   font-weight:500;
   position: relative;
 }
-.room.selected {
-  background:#4f46e5;
-}
+.room.selected { background:#4f46e5; }
 #chat {
   flex:1;
   overflow-y:auto;
@@ -54,19 +51,9 @@ header {
   border-radius:15px;
   word-wrap: break-word;
 }
-.sender {
-  font-size:12px;
-  opacity:0.7;
-  margin-bottom:2px;
-}
-.mine {
-  background:#4f46e5;
-  align-self:flex-end;
-}
-.other {
-  background:#2d2d44;
-  align-self:flex-start;
-}
+.sender { font-size:12px; opacity:0.7; margin-bottom:2px; }
+.mine { background:#4f46e5; align-self:flex-end; }
+.other { background:#2d2d44; align-self:flex-start; }
 #inputArea {
   display:flex;
   gap:5px;
@@ -74,13 +61,7 @@ header {
   width:100%;
   background:rgba(0,0,0,0.3);
 }
-#messageInput {
-  flex:1;
-  padding:10px;
-  border-radius:15px;
-  border:none;
-  outline:none;
-}
+#messageInput { flex:1; padding:10px; border-radius:15px; border:none; outline:none; }
 button {
   padding:10px 15px;
   border:none;
@@ -90,18 +71,9 @@ button {
   cursor:pointer;
   font-weight:500;
 }
-#createRoomArea {
-  display:flex;
-  gap:5px;
-  padding:10px;
-  background:rgba(0,0,0,0.2);
-}
-#createRoomArea input {
-  padding:5px;
-  border-radius:12px;
-  border:none;
-  outline:none;
-}
+#createRoomArea { display:flex; gap:5px; padding:10px; background:rgba(0,0,0,0.2); }
+#createRoomArea input { padding:5px; border-radius:12px; border:none; outline:none; }
+#deleteRoomBtn { margin-left:10px; background:#f87171; }
 </style>
 </head>
 <body>
@@ -116,6 +88,7 @@ button {
   <input id="newRoomName" placeholder="Room name" />
   <input id="newRoomPass" placeholder="Password (optional)" />
   <button id="createRoomBtn">Create Room</button>
+  <button id="deleteRoomBtn">Delete Room</button>
 </div>
 
 <div id="inputArea">
@@ -126,7 +99,7 @@ button {
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-import { getFirestore, collection, addDoc, serverTimestamp, query, orderBy, onSnapshot, doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+import { getFirestore, collection, addDoc, serverTimestamp, query, orderBy, onSnapshot, doc, getDoc, setDoc, updateDoc, arrayUnion } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
 
 // Firebase config
@@ -140,16 +113,14 @@ const firebaseConfig = {
   measurementId: "G-L0K72L8894"
 };
 
-// Initialize Firebase
+// Init Firebase
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 const auth = getAuth();
 await signInAnonymously(auth);
 
-// Fixed username
 const username = "Educational Website";
 
-// Elements
 const chatDiv = document.getElementById("chat");
 const messageInput = document.getElementById("messageInput");
 const sendBtn = document.getElementById("sendBtn");
@@ -158,17 +129,17 @@ const roomsDiv = document.getElementById("rooms");
 const newRoomName = document.getElementById("newRoomName");
 const newRoomPass = document.getElementById("newRoomPass");
 const createRoomBtn = document.getElementById("createRoomBtn");
+const deleteRoomBtn = document.getElementById("deleteRoomBtn");
 
 let currentRoom = "General";
 const roomsRef = collection(db,"rooms");
 const messagesRef = collection(db,"messages");
+const deleteRequestsRef = collection(db,"deleteRequests");
 
-// --- Ensure General Room Exists ---
+// --- Ensure General exists ---
 const generalRoomDoc = doc(db,"rooms","General");
 getDoc(generalRoomDoc).then(d=>{
-  if(!d.exists){
-    setDoc(generalRoomDoc,{name:"General",password:"", temporary:false});
-  }
+  if(!d.exists) setDoc(generalRoomDoc,{name:"General",password:"", temporary:false});
   loadRooms();
 });
 
@@ -182,8 +153,6 @@ function loadRooms(){
       div.className="room "+(r.name===currentRoom?"selected":"");
       div.textContent=r.name;
       div.onclick=()=>joinRoom(r.name,r.password);
-      // Only attach long-press if room is not General
-      if(r.name !== "General") attachLongPress(div,r.name);
       roomsDiv.appendChild(div);
     });
   });
@@ -225,22 +194,13 @@ joinRoom("General","");
 async function sendMessage(){
   const text = messageInput.value.trim();
   if(!text) return;
-  try{
-    await addDoc(messagesRef,{
-      text,
-      sender: username,
-      room: currentRoom,
-      createdAt: serverTimestamp()
-    });
-    messageInput.value="";
-  }catch(err){
-    console.error("Error sending message:",err);
-  }
+  await addDoc(messagesRef,{text,sender:username,room:currentRoom,createdAt:serverTimestamp()});
+  messageInput.value="";
 }
-sendBtn.addEventListener("click", sendMessage);
+sendBtn.addEventListener("click",sendMessage);
 messageInput.addEventListener("keypress", e=>{if(e.key==="Enter") sendMessage();});
 
-// --- Clear Chat locally ---
+// --- Clear chat locally ---
 clearBtn.addEventListener("click", ()=>chatDiv.innerHTML="");
 
 // --- Create Room ---
@@ -249,34 +209,56 @@ createRoomBtn.addEventListener("click", async ()=>{
   const pass = newRoomPass.value.trim();
   if(!name) return;
   await setDoc(doc(db,"rooms",name),{name,password:pass,temporary:false});
-  newRoomName.value="";
-  newRoomPass.value="";
+  newRoomName.value=""; newRoomPass.value="";
   joinRoom(name,pass);
 });
 
-// --- Long-press delete function ---
-let pressTimer;
-function attachLongPress(div, roomName){
-  div.addEventListener("mousedown", startPress);
-  div.addEventListener("touchstart", startPress);
-  div.addEventListener("mouseup", cancelPress);
-  div.addEventListener("mouseleave", cancelPress);
-  div.addEventListener("touchend", cancelPress);
+// --- Delete Room Request ---
+deleteRoomBtn.addEventListener("click", async ()=>{
+  if(currentRoom==="General") return alert("Cannot delete General room");
+  const reqDoc = doc(db,"deleteRequests",currentRoom);
+  await setDoc(reqDoc,{requester:username,agreed:[],disagreed:[],timestamp:serverTimestamp()});
+});
 
-  function startPress(){
-    pressTimer = setTimeout(async ()=>{
-      if(confirm(`Delete room "${roomName}"?`)){
-        // Delete room
-        await db.collection("rooms").doc(roomName).delete();
-        // Delete messages in room
-        const snap = await db.collection("messages").where("room","==",roomName).get();
-        snap.forEach(m=>m.ref.delete());
-        if(currentRoom===roomName) joinRoom("General","");
-      }
-    }, 1500); // 1.5 seconds long press
-  }
-  function cancelPress(){ clearTimeout(pressTimer); }
-}
+// --- Listen for Delete Requests ---
+onSnapshot(deleteRequestsRef, async snap=>{
+  snap.docs.forEach(async d=>{
+    const req = d.data();
+    const roomName = d.id;
+    if(roomName!==currentRoom) return;
+    if(req.requester===username) return; // don't prompt self
+    const agree = confirm(`${req.requester} wants to delete "${roomName}". Agree?`);
+    const docRef = doc(db,"deleteRequests",roomName);
+    if(agree){
+      await updateDoc(docRef,{agreed:arrayUnion(username)});
+    } else {
+      await updateDoc(docRef,{disagreed:arrayUnion(username)});
+    }
+  });
+});
+
+// --- Monitor Requests and Delete Room if Everyone Agrees ---
+onSnapshot(deleteRequestsRef, async snap=>{
+  snap.docs.forEach(async d=>{
+    const req = d.data();
+    const roomName = d.id;
+    const roomDoc = await getDoc(doc(db,"rooms",roomName));
+    if(!roomDoc.exists()) return;
+    // Get all users (naive: messages senders in that room)
+    const messagesSnap = await query(messagesRef, orderBy("createdAt"));
+    const qSnap = await onSnapshot(messagesRef, ()=>{}); // optional: can track online users better
+    // For simplicity, if anyone disagreed, cancel
+    if(req.disagreed.length>0) return;
+    // If agreed has >=1 (other person), delete
+    if(req.agreed.length>=1){
+      await db.collection("rooms").doc(roomName).delete();
+      const msgsSnap = await db.collection("messages").where("room","==",roomName).get();
+      msgsSnap.forEach(m=>m.ref.delete());
+      if(currentRoom===roomName) joinRoom("General","");
+      await db.collection("deleteRequests").doc(roomName).delete();
+    }
+  });
+});
 </script>
 
 </body>
