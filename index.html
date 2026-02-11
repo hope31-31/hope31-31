@@ -162,11 +162,14 @@ let currentRoom = "General";
 const roomsRef = collection(db,"rooms");
 const messagesRef = collection(db,"messages");
 
+// Track temporary rooms
+const tempRooms = new Set();
+
 // --- Ensure General Room Exists ---
 const generalRoomDoc = doc(db,"rooms","General");
 getDoc(generalRoomDoc).then(d=>{
   if(!d.exists){
-    setDoc(generalRoomDoc,{name:"General",password:""});
+    setDoc(generalRoomDoc,{name:"General",password:"", temporary:false});
   }
   loadRooms();
 });
@@ -245,10 +248,22 @@ createRoomBtn.addEventListener("click", async ()=>{
   const name = newRoomName.value.trim();
   const pass = newRoomPass.value.trim();
   if(!name) return;
-  await setDoc(doc(db,"rooms",name),{name,password:pass});
+  await setDoc(doc(db,"rooms",name),{name,password:pass, temporary:true});
+  tempRooms.add(name);
   newRoomName.value="";
   newRoomPass.value="";
   joinRoom(name,pass);
+});
+
+// --- Delete temporary rooms on unload ---
+window.addEventListener("beforeunload", async () => {
+  for (const roomName of tempRooms) {
+    const roomDoc = doc(db, "rooms", roomName);
+    const snapshot = await getDoc(roomDoc);
+    if (snapshot.exists() && snapshot.data().temporary) {
+      await roomDoc.delete();
+    }
+  }
 });
 </script>
 
