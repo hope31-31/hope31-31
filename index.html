@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Simple Chat</title>
+<title>Chat with Rooms</title>
 <style>
 body {
   margin:0;
@@ -20,6 +20,23 @@ header {
   font-size:18px;
   font-weight:bold;
   background:rgba(0,0,0,0.3);
+}
+#rooms {
+  display:flex;
+  gap:5px;
+  padding:5px 10px;
+  overflow-x:auto;
+  background:rgba(0,0,0,0.2);
+}
+.room {
+  padding:5px 10px;
+  background:#6366f1;
+  border-radius:12px;
+  cursor:pointer;
+  white-space:nowrap;
+}
+.room.selected {
+  background:#4f46e5;
 }
 #chat {
   flex:1;
@@ -67,25 +84,46 @@ button {
   color:white;
   cursor:pointer;
 }
+#createRoomArea {
+  display:flex;
+  gap:5px;
+  padding:10px;
+  background:rgba(0,0,0,0.2);
+}
+#createRoomArea input {
+  padding:5px;
+  border-radius:12px;
+  border:none;
+  outline:none;
+}
 </style>
 </head>
 <body>
 
-<header>Simple Chat</header>
+<header>Chat with Rooms</header>
+
+<div id="rooms"></div>
 
 <div id="chat"></div>
+
+<div id="createRoomArea">
+  <input id="newRoomName" placeholder="Room name" />
+  <input id="newRoomPass" placeholder="Password (optional)" />
+  <button id="createRoomBtn">Create Room</button>
+</div>
+
 <div id="inputArea">
   <input id="messageInput" placeholder="Type a message..." />
   <button id="sendBtn">Send</button>
+  <button id="clearBtn">Clear Chat</button>
 </div>
 
 <script type="module">
-// 🔑 Firebase imports
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-import { getFirestore, collection, addDoc, serverTimestamp, query, orderBy, onSnapshot } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+import { getFirestore, collection, addDoc, serverTimestamp, query, orderBy, onSnapshot, doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
 
-// 🔧 Your Firebase config
+// Firebase config
 const firebaseConfig = {
   apiKey: "AIzaSyD9GQMi0v4ItnkJ2uqKtUUQU59DorLrCAg",
   authDomain: "live-chat-3d2c3.firebaseapp.com",
@@ -100,14 +138,12 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 const auth = getAuth();
-
-// 🔹 Sign in anonymously
 await signInAnonymously(auth);
 console.log("Signed in anonymously!");
 
-// Prompt for a name
+// Prompt for name
 let username = localStorage.getItem("chatUsername");
-while(!username || username.trim().length < 1){
+while(!username || username.trim().length<1){
   username = prompt("Enter your name:");
 }
 username = username.trim();
@@ -117,45 +153,103 @@ localStorage.setItem("chatUsername", username);
 const chatDiv = document.getElementById("chat");
 const messageInput = document.getElementById("messageInput");
 const sendBtn = document.getElementById("sendBtn");
+const clearBtn = document.getElementById("clearBtn");
+const roomsDiv = document.getElementById("rooms");
+const newRoomName = document.getElementById("newRoomName");
+const newRoomPass = document.getElementById("newRoomPass");
+const createRoomBtn = document.getElementById("createRoomBtn");
 
-// Firestore collection
+let currentRoom = "General";
+const roomsRef = collection(db,"rooms");
 const messagesRef = collection(db,"messages");
 
-// Send message function
+// --- Ensure General Room Exists ---
+const generalRoomDoc = doc(db,"rooms","General");
+getDoc(generalRoomDoc).then(d=>{
+  if(!d.exists){
+    setDoc(generalRoomDoc,{name:"General",password:""});
+  }
+  loadRooms();
+});
+
+// --- Load Rooms ---
+function loadRooms(){
+  onSnapshot(roomsRef,snap=>{
+    roomsDiv.innerHTML="";
+    snap.forEach(d=>{
+      const r = d.data();
+      const div = document.createElement("div");
+      div.className="room "+(r.name===currentRoom?"selected":"");
+      div.textContent=r.name;
+      div.onclick=()=>joinRoom(r.name,r.password);
+      roomsDiv.appendChild(div);
+    });
+  });
+}
+
+// --- Join Room ---
+function joinRoom(name,pass){
+  if(pass && pass!==""){
+    const entered = prompt("Enter password for "+name);
+    if(entered!==pass) return alert("Wrong password");
+  }
+  currentRoom = name;
+  listenMessages();
+}
+
+// --- Listen Messages ---
+let unsubscribe = null;
+function listenMessages(){
+  if(unsubscribe) unsubscribe();
+  chatDiv.innerHTML="";
+  const q = query(messagesRef, orderBy("createdAt"));
+  unsubscribe = onSnapshot(q,snap=>{
+    chatDiv.innerHTML="";
+    snap.forEach(docSnap=>{
+      const m = docSnap.data();
+      if(m.room===currentRoom){
+        const div = document.createElement("div");
+        div.className="message "+(m.sender===username?"mine":"other");
+        div.innerHTML=`<div class="sender">${m.sender}</div>${m.text}`;
+        chatDiv.appendChild(div);
+      }
+    });
+    chatDiv.scrollTop = chatDiv.scrollHeight;
+  });
+}
+joinRoom("General","");
+
+// --- Send Message ---
 async function sendMessage(){
   const text = messageInput.value.trim();
   if(!text) return;
-  try {
+  try{
     await addDoc(messagesRef,{
       text,
       sender: username,
-      createdAt:serverTimestamp()
+      room: currentRoom,
+      createdAt: serverTimestamp()
     });
     messageInput.value="";
-  } catch(err){
-    console.error("Error sending message:", err);
-    alert("Failed to send message. Check console.");
+  }catch(err){
+    console.error("Error sending message:",err);
   }
 }
-
-// Send on button click or Enter
 sendBtn.addEventListener("click", sendMessage);
-messageInput.addEventListener("keypress", e=>{
-  if(e.key==="Enter") sendMessage();
-});
+messageInput.addEventListener("keypress", e=>{if(e.key==="Enter") sendMessage();});
 
-// Real-time updates
-const q = query(messagesRef, orderBy("createdAt"));
-onSnapshot(q, snapshot=>{
-  chatDiv.innerHTML="";
-  snapshot.forEach(docSnap=>{
-    const data = docSnap.data();
-    const div = document.createElement("div");
-    div.className = "message "+(data.sender===username?"mine":"other");
-    div.innerHTML = `<div class="sender">${data.sender}</div>${data.text}`;
-    chatDiv.appendChild(div);
-  });
-  chatDiv.scrollTop = chatDiv.scrollHeight;
+// --- Clear Chat locally ---
+clearBtn.addEventListener("click", ()=>chatDiv.innerHTML="");
+
+// --- Create Room ---
+createRoomBtn.addEventListener("click", async ()=>{
+  const name = newRoomName.value.trim();
+  const pass = newRoomPass.value.trim();
+  if(!name) return;
+  await setDoc(doc(db,"rooms",name),{name,password:pass});
+  newRoomName.value="";
+  newRoomPass.value="";
+  joinRoom(name,pass);
 });
 </script>
 
