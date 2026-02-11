@@ -1,135 +1,113 @@
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-import { 
-  getFirestore, collection, addDoc, serverTimestamp,
-  onSnapshot, doc, setDoc, deleteDoc, getDocs, where, query 
-} from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
-import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+import { getFirestore, collection, addDoc, onSnapshot, deleteDoc, doc, getDocs, query, where, setDoc } 
+from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+import { getAuth, signInAnonymously } 
+from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
 
-// YOUR REAL CONFIG
+console.log("Chat app starting...");
+
+// Firebase config
 const firebaseConfig = {
   apiKey: "AIzaSyD9GQMi0v4ItnkJ2uqKtUUQU59DorLrCAg",
   authDomain: "live-chat-3d2c3.firebaseapp.com",
   projectId: "live-chat-3d2c3",
   storageBucket: "live-chat-3d2c3.firebasestorage.app",
   messagingSenderId: "550798266942",
-  appId: "1:550798266942:web:2ce678f70e4f64d6f7376f",
-  measurementId: "G-L0K72L8894"
+  appId: "1:550798266942:web:2ce678f70e4f64d6f7376f"
 };
 
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
-const auth = getAuth();
+const auth = getAuth(app);
 
 let username = "";
 let currentRoom = "General";
-let unsubscribeMessages = null;
-let createdRoomsThisSession = [];
+let unsubscribe = null;
+let createdRooms = [];
 
 // DOM
-const chatDiv = document.getElementById("chat");
-const messageInput = document.getElementById("messageInput");
+const chat = document.getElementById("chat");
+const roomsDiv = document.getElementById("rooms");
+const input = document.getElementById("messageInput");
 const sendBtn = document.getElementById("sendBtn");
 const clearBtn = document.getElementById("clearBtn");
-const roomsDiv = document.getElementById("rooms");
-const newRoomName = document.getElementById("newRoomName");
-const newRoomPass = document.getElementById("newRoomPass");
 const createRoomBtn = document.getElementById("createRoomBtn");
+const newRoomName = document.getElementById("newRoomName");
 
-// --- AUTH ---
-signInAnonymously(auth);
-
-onAuthStateChanged(auth, async (user) => {
-  if (user) {
-    username = user.uid;
-    await ensureGeneral();
-    loadRooms();
-    joinRoom("General", "");
-  }
+// AUTH FIRST
+signInAnonymously(auth).then(userCred => {
+  username = userCred.user.uid;
+  console.log("Signed in:", username);
+  startApp();
+}).catch(err => {
+  console.error("Auth error:", err);
 });
 
-// --- ENSURE GENERAL EXISTS ---
+function startApp() {
+  ensureGeneral();
+  loadRooms();
+  joinRoom("General");
+}
+
 async function ensureGeneral() {
   await setDoc(doc(db,"rooms","General"), {
-    name:"General",
-    password:"",
-    creator:"system"
+    name:"General"
   }, { merge:true });
 }
 
-// --- LOAD ROOMS ---
 function loadRooms() {
   onSnapshot(collection(db,"rooms"), snap=>{
     roomsDiv.innerHTML="";
     snap.forEach(d=>{
-      const r = d.data();
+      const room = d.data().name;
       const div = document.createElement("div");
       div.className="room";
-      if(r.name===currentRoom) div.classList.add("selected");
-      div.textContent=r.name;
-      div.onclick=()=>joinRoom(r.name,r.password);
+      if(room===currentRoom) div.classList.add("selected");
+      div.textContent = room;
+      div.onclick = ()=> joinRoom(room);
       roomsDiv.appendChild(div);
     });
   });
 }
 
-// --- JOIN ROOM ---
-function joinRoom(name, pass) {
-  if(pass){
-    const entered = prompt("Enter password");
-    if(entered!==pass) return alert("Wrong password");
-  }
+function joinRoom(name) {
   currentRoom = name;
-  listenMessages();
-}
 
-// --- LISTEN MESSAGES (NO INDEX REQUIRED) ---
-function listenMessages(){
-  if(unsubscribeMessages) unsubscribeMessages();
-  chatDiv.innerHTML="";
+  if(unsubscribe) unsubscribe();
 
-  const q = query(
-    collection(db,"messages"),
-    where("room","==",currentRoom)
+  unsubscribe = onSnapshot(
+    query(collection(db,"messages"), where("room","==",currentRoom)),
+    snap=>{
+      chat.innerHTML="";
+      snap.forEach(docSnap=>{
+        const m = docSnap.data();
+        const div = document.createElement("div");
+        div.className="message " + (m.sender===username?"mine":"other");
+        div.innerHTML = `<div class="sender">${m.sender}</div>${m.text}`;
+        chat.appendChild(div);
+      });
+      chat.scrollTop = chat.scrollHeight;
+    }
   );
-
-  unsubscribeMessages = onSnapshot(q, snap=>{
-    chatDiv.innerHTML="";
-    snap.forEach(docSnap=>{
-      const m = docSnap.data();
-      const div = document.createElement("div");
-      div.className="message "+(m.sender===username?"mine":"other");
-      div.innerHTML=`<div class="sender">${m.sender}</div>${m.text}`;
-      chatDiv.appendChild(div);
-    });
-    chatDiv.scrollTop = chatDiv.scrollHeight;
-  });
 }
 
-// --- SEND MESSAGE ---
-async function sendMessage(){
-  const text = messageInput.value.trim();
+// SEND MESSAGE
+sendBtn.onclick = async ()=>{
+  const text = input.value.trim();
   if(!text) return;
 
   await addDoc(collection(db,"messages"),{
-    text,
+    text:text,
     sender:username,
-    room:currentRoom,
-    createdAt:serverTimestamp()
+    room:currentRoom
   });
 
-  messageInput.value="";
-}
+  input.value="";
+};
 
-sendBtn.onclick = sendMessage;
-messageInput.addEventListener("keypress", e=>{
-  if(e.key==="Enter") sendMessage();
-});
-
-// --- CLEAR CHAT (PERMANENT) ---
+// CLEAR CHAT FOREVER
 clearBtn.onclick = async ()=>{
-  if(!confirm("Clear chat forever?")) return;
-
   const snap = await getDocs(
     query(collection(db,"messages"), where("room","==",currentRoom))
   );
@@ -139,38 +117,26 @@ clearBtn.onclick = async ()=>{
   }
 };
 
-// --- CREATE ROOM ---
+// CREATE ROOM
 createRoomBtn.onclick = async ()=>{
   const name = newRoomName.value.trim();
-  const pass = newRoomPass.value.trim();
   if(!name) return;
 
-  await setDoc(doc(db,"rooms",name),{
-    name,
-    password:pass,
-    creator:username
-  });
-
-  createdRoomsThisSession.push(name);
-
+  await setDoc(doc(db,"rooms",name),{name:name});
+  createdRooms.push(name);
   newRoomName.value="";
-  newRoomPass.value="";
-  joinRoom(name,pass);
+  joinRoom(name);
 };
 
-// --- AUTO DELETE ROOM ON TAB CLOSE ---
+// DELETE CREATED ROOMS WHEN TAB CLOSES
 window.addEventListener("beforeunload", async ()=>{
-  for(const room of createdRoomsThisSession){
-
-    // delete messages in that room
+  for(const room of createdRooms){
     const snap = await getDocs(
       query(collection(db,"messages"), where("room","==",room))
     );
-
     for(const d of snap.docs){
       await deleteDoc(d.ref);
     }
-
     await deleteDoc(doc(db,"rooms",room));
   }
 });
