@@ -3,32 +3,47 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Join Chat</title>
+<title>Real-Time Chat</title>
+
 <style>
 body {
   margin:0;
-  font-family: Arial, sans-serif;
-  display:flex;
-  justify-content:center;
-  align-items:center;
+  font-family:-apple-system, BlinkMacSystemFont, sans-serif;
+  background: linear-gradient(135deg,#1e1e2f,#2c2c54);
+  color:white;
   height:100vh;
-  background: linear-gradient(135deg,#eef2f7,#cfd9df);
+  display:flex;
+  flex-direction:column;
 }
-.container {
-  background:white;
-  padding:30px;
-  border-radius:16px;
+
+header {
+  padding:15px;
+  font-size:18px;
+  font-weight:bold;
   text-align:center;
-  box-shadow:0 10px 20px rgba(0,0,0,0.2);
+  background:rgba(0,0,0,0.3);
+  backdrop-filter: blur(10px);
 }
-input {
-  width:80%;
+
+#usernamePrompt {
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  flex:1;
+}
+
+#usernamePrompt input {
   padding:10px;
-  margin:10px 0;
-  border-radius:10px;
-  border:1px solid #ccc;
+  margin:10px;
+  border-radius:12px;
+  border:none;
+  outline:none;
+  width:60%;
+  max-width:300px;
 }
-button {
+
+#usernamePrompt button {
   padding:10px 20px;
   border:none;
   border-radius:12px;
@@ -37,23 +52,207 @@ button {
   font-weight:bold;
   cursor:pointer;
 }
+
+#chatArea {
+  display:none;
+  flex-direction:column;
+  flex:1;
+}
+
+#chat {
+  flex:1;
+  overflow-y:auto;
+  padding:10px;
+}
+
+.message {
+  max-width:70%;
+  padding:10px 14px;
+  margin:6px 0;
+  border-radius:18px;
+  word-wrap:break-word;
+  position:relative;
+}
+
+.mine {
+  align-self:flex-end;
+  background:#4f46e5;
+}
+
+.other {
+  align-self:flex-start;
+  background:#2d2d44;
+}
+
+.message img {
+  max-width:100%;
+  border-radius:12px;
+  margin-top:6px;
+}
+
+.reactions {
+  font-size:12px;
+  margin-top:4px;
+  opacity:0.7;
+  display:flex;
+  gap:6px;
+}
+
+.reaction {
+  cursor:pointer;
+}
+
+#typing {
+  font-size:13px;
+  opacity:0.7;
+  padding-left:10px;
+}
+
+#inputArea {
+  display:flex;
+  padding:10px;
+  gap:6px;
+  background:rgba(0,0,0,0.4);
+  backdrop-filter: blur(10px);
+}
+
+#messageInput {
+  flex:1;
+  padding:10px;
+  border:none;
+  border-radius:20px;
+  outline:none;
+}
+
+button {
+  border:none;
+  border-radius:20px;
+  padding:8px 12px;
+  background:#6366f1;
+  color:white;
+  cursor:pointer;
+}
+
+button:hover {
+  background:#4f46e5;
+}
 </style>
 </head>
 <body>
-<div class="container">
-  <h2>Enter Username</h2>
-  <input type="text" id="username" placeholder="Pick a username">
-  <br>
-  <button onclick="joinChat()">Join Chat</button>
+
+<header>Chat Dashboard</header>
+
+<div id="usernamePrompt">
+  <input id="usernameInput" placeholder="Enter a username">
+  <button onclick="saveUsername()">Join Chat</button>
 </div>
 
-<script>
-function joinChat(){
-  const username = document.getElementById("username").value.trim();
-  if(username.length < 2) return alert("Enter 2+ letters");
-  localStorage.setItem("username", username);
-  window.location.href = "chat.html";
+<div id="chatArea">
+  <div id="chat"></div>
+  <div id="typing"></div>
+  <div id="inputArea">
+    <input id="messageInput" placeholder="Type message..." />
+    <input type="file" id="imageInput" accept="image/*" hidden />
+    <button onclick="document.getElementById('imageInput').click()">📎</button>
+    <button onclick="sendMessage()">Send</button>
+  </div>
+</div>
+
+<script type="module">
+// Firebase imports
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+import { getFirestore, collection, addDoc, serverTimestamp, query, orderBy, onSnapshot, doc, updateDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+import { getStorage, ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-storage.js";
+
+// Replace with your Firebase config
+const firebaseConfig = {
+  apiKey: "PASTE_YOURS",
+  authDomain: "PASTE_YOURS",
+  projectId: "PASTE_YOURS",
+  storageBucket: "PASTE_YOURS",
+  messagingSenderId: "PASTE_YOURS",
+  appId: "PASTE_YOURS"
+};
+
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+const auth = getAuth(app);
+const storage = getStorage(app);
+
+await signInAnonymously(auth);
+
+// Elements
+const usernamePrompt = document.getElementById("usernamePrompt");
+const usernameInput = document.getElementById("usernameInput");
+const chatArea = document.getElementById("chatArea");
+const chatDiv = document.getElementById("chat");
+const typingDiv = document.getElementById("typing");
+const messageInput = document.getElementById("messageInput");
+const imageInput = document.getElementById("imageInput");
+
+let username = localStorage.getItem("username");
+if(username){
+  showChat();
 }
+
+function saveUsername(){
+  const name = usernameInput.value.trim();
+  if(name.length < 2) return alert("Enter 2+ letters");
+  username = name;
+  localStorage.setItem("username", username);
+  showChat();
+}
+
+function showChat(){
+  usernamePrompt.style.display = "none";
+  chatArea.style.display = "flex";
+}
+
+// Firestore refs
+const messagesRef = collection(db,"messages");
+
+// Send message
+async function sendMessage(imageUrl=null){
+  const text = messageInput.value.trim();
+  if(!text && !imageUrl) return;
+  await addDoc(messagesRef,{
+    text:text || "",
+    image:imageUrl || "",
+    user:username,
+    createdAt:serverTimestamp(),
+    reactions:{}
+  });
+  messageInput.value="";
+}
+
+messageInput.addEventListener("keypress", e=>{
+  if(e.key==="Enter") sendMessage();
+});
+
+imageInput.addEventListener("change", async e=>{
+  const file = e.target.files[0];
+  if(!file) return;
+  const storageRef = ref(storage,"images/"+Date.now());
+  await uploadBytes(storageRef,file);
+  const url = await getDownloadURL(storageRef);
+  sendMessage(url);
+});
+
+// Real-time messages
+const q = query(messagesRef, orderBy("createdAt"));
+onSnapshot(q, snapshot=>{
+  chatDiv.innerHTML="";
+  snapshot.forEach(docSnap=>{
+    const data = docSnap.data();
+    const div = document.createElement("div");
+    div.className = "message " + (data.user===username ? "mine" : "other");
+    div.innerHTML = `<b>${data.user}</b><br>${data.text}`;
+    if(data.image) div.innerHTML += `<br><img src="${data.image}" style="max-width:100%; border-radius:12px; margin-top:5px;">`;
+    chatDiv.appendChild(div);
+  });
+  chatDiv.scrollTop = chatDiv.scrollHeight;
+});
 </script>
 </body>
 </html>
